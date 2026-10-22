@@ -19,3 +19,7 @@ CLI 0.163.0 在临时 HOME/CODEX_HOME 中启动 app-server --strict-config，经
 ## 技能行为演练
 
 独立新 context 在临时 HOME/Git 仓中执行 start，到计划确认处停止。无 origin 时正确降级，实际创建项目内普通 Git 工作树，未写实现；据演练明确空项目从 0 编号、新建本地忽略文件自身也忽略，避免主树出现未跟踪的忽略文件。
+
+## 本机部署核验
+
+主目录与两个 linked worktree 的 Git 元数据已迁移并验证；资源及两端技能软链均解析到新目录，不存在指向旧源码路径的残留链接。Codex 指令预算为 65536，主工作树干净。新 launchd label 已通过安装器加载查询和 plist 检查；未代替用户信任 hook。

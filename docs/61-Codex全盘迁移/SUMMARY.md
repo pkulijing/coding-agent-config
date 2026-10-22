@@ -12,6 +12,7 @@
 - Codex review 使用独立 context，模型和 medium 思考档统一维护于 agents/codex-review.toml；CC 定义保留兼容。实际能力失败才逐档降级，不按平台名猜测。
 - Codex hooks 改为原生三层配置，编辑事件解析支持多文件 patch、重命名目的路径和会话 cwd；只解析路径，不执行 patch 字符串。提交前 lint 门禁继续保留。
 - 安装/自动更新/调度器改用 coding-agent-config 名称及中性路径，保留安装只能在主 checkout 运行、防止调度器卸载自身的防线。指令预算优先计算 AGENTS.md，避免兼容包装重复计入。
+- 本机主目录已迁到 `/Users/wujie/Personal/coding-agent-config`，安装从主 checkout 完成，自动同步任务已注册为 `com.coding-agent-config.auto-update`；共享资源和技能入口经实际解析均指向新目录。旧第 37 轮的未跟踪开发记录完整保留，旧源码路径软链零残留。
 - GitHub 仓库已改为 [pkulijing/coding-agent-config](https://github.com/pkulijing/coding-agent-config)，origin 同步更新；历史开发记录不批量重命名。
 
 验证产物：本目录的安装、调度器、hook、预算和工作树目录迁移沙盘共 30 项通过；原预算 41 项与调度器 14 项回归通过，platform_issue 自检和引用检查通过。所有调度器测试使用临时 HOME 和命令桩，不注册真实服务。CLI 0.163.0 原生 hooks/list 已验证正确 schema 能列出 hook、旧 schema 静默返回空列表；信任状态单独核对。
