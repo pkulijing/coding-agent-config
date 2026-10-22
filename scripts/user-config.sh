@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# claude-code-global 用户可配置项：可 source 的库。
+# coding-agent-config 用户可配置项：可 source 的库。
 #
 # 背景：仓库原本把所有偏好硬编码，缺一层「用户可配置」。本库提供最小机制——
-# 用户偏好以扁平 KEY=value 存于【真实配置】（默认 ~/.claude-code-global/config.env），
+# 用户偏好以扁平 KEY=value 存于【真实配置】（默认 ~/.coding-agent/config.env），
 # 仓库内只放 user.config.example.env 作为示例基线（committed）。
 #
 # 三条设计约束（详见 docs/27-用户可配置项机制/DESIGN.md）：
@@ -18,7 +18,7 @@
 
 # 用户真实配置文件路径；允许 CCG_USER_CONFIG 覆盖（测试沙箱 / 自定义位置用）。
 ccg_user_config_path() {
-    echo "${CCG_USER_CONFIG:-$HOME/.claude-code-global/config.env}"
+    echo "${CCG_USER_CONFIG:-$HOME/.coding-agent/config.env}"
 }
 
 # 列出某文件里所有「配置 key」（行首 KEY= 的 KEY 名；忽略注释与空行）。
@@ -53,12 +53,33 @@ ccg_read_config() {
     printf '%s\n' "$val"
 }
 
+# 旧配置保留原件；新配置不存在时原样复制，双方已有时只补缺 key。
+ccg_migrate_user_config() {
+    [ -z "${CCG_USER_CONFIG:-}" ] || return 0
+    local legacy="$HOME/.claude-code-global/config.env" file key line
+    file="$(ccg_user_config_path)"
+    [ -f "$legacy" ] || return 0
+    mkdir -p "$(dirname "$file")"
+    if [ ! -f "$file" ]; then
+        cp -p "$legacy" "$file"
+        return 0
+    fi
+    while IFS= read -r key; do
+        [ -n "$key" ] || continue
+        if ! grep -qE "^${key}=" "$file"; then
+            line="$(grep -E "^${key}=" "$legacy" | tail -n 1)"
+            printf '\n%s\n' "$line" >> "$file"
+        fi
+    done < <(ccg_config_keys_in "$legacy")
+}
+
 # seed 用户配置（user-wins）：
 #   - 真实配置不存在 → mkdir + 整份复制 example
 #   - 已存在 → 逐 key 检查 example 中的 key，本地缺失的才从 example 取整行追加；已有的绝不动
 # 用法: ccg_seed_user_config <example_path>
 ccg_seed_user_config() {
     local example="$1"
+    ccg_migrate_user_config
     local file
     file="$(ccg_user_config_path)"
 

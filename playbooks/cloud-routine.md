@@ -1,6 +1,8 @@
-# claude.ai Routines 云端环境规则
+# claude.ai Routines 云端环境规则（CC 兼容）
 
-> 本文档由 `claude-code-global` 仓库的 `playbooks/cloud-routine.md` 提供，经 `install.sh` 双轨软链到 `~/.claude/playbooks/cloud-routine.md`（CC 端）与 `~/.codex/playbooks/cloud-routine.md`（Codex 端）。修改请回到 `claude-code-global` 仓库，不要直接编辑软链目标。
+> 本文档由 `coding-agent-config` 仓库的 `playbooks/cloud-routine.md` 提供，经 `install.sh` 共享软链到 `~/.coding-agent/playbooks/cloud-routine.md`。修改请回到 `coding-agent-config` 仓库，不要直接编辑软链目标。
+>
+> 本文记录 CC 云端的既有实测，不能外推到 Codex 本机、Codex 云端或其他调度器。平台能力会变化，部署前须实际检查当前环境；下表保留的是原平台观察，不代表迁移后已验证。
 >
 > **触发条件**：Coding Agent 在本轮任务涉及 claude.ai Routines、云端定时 agent、`RemoteTrigger` / `/schedule` 注册，或需要判断云端 sandbox 能力边界（能不能跑某工具、装某配置、取回输出）时，**必须先把本文件读入上下文**，再开始动手。
 
@@ -10,7 +12,7 @@
 
 | 项                                                                   | 结论                                                                                                                                                    |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `install.sh`（软链 skills/hooks/scripts 到 `$HOME/.claude`）云端执行 | ✅ 跑得通（仅 systemd 注册因容器无 dbus 失败，非致命）                                                                                                  |
+| CC 旧版 `install.sh`（当时向 `$HOME/.claude` 部署）云端执行 | ✅ 跑得通（仅 systemd 注册因容器无 dbus 失败，非致命）                                                                                                  |
 | skills 对**已启动**会话生效                                          | ✅ 动态生效——调一次 Skill 工具即整体刷新                                                                                                                |
 | hooks（PostToolUse）对已启动会话生效                                 | ✅ 动态生效（实测 ruff format 真的触发）                                                                                                                |
 | hooks（SessionStart）                                                | ❌ 已过触发时点                                                                                                                                         |
@@ -31,7 +33,7 @@
 
 给一条云端 routine 配置环境时，按三层各取其正解：
 
-1. **指令层：仓库自带 `CLAUDE.md`**。这是唯一会自动进系统提示的指令通道（用户级 `~/.claude/CLAUDE.md` 在云端不生效，见矩阵）。routine 的行为逻辑放仓库内（skill / `CLAUDE.md`），claude.ai 网页上的 prompt 只留指针——逻辑随 PR 被 review、有版本历史，不与网页配置漂移。
+1. **指令层：仓库自带 `CLAUDE.md`**。这是原 CC 云端实测会自动进系统提示的指令通道（用户级 `~/.claude/CLAUDE.md` 在云端不生效，见矩阵）。当前仓库规则正文放 `AGENTS.md`，`CLAUDE.md` 只通过 `@AGENTS.md` 兼容导入；CC 云端应先验证该导入实际生效。routine 的行为逻辑放仓库内（skill / `AGENTS.md`），claude.ai 网页上的 prompt 只留指针——逻辑随 PR 被 review、有版本历史，不与网页配置漂移。
 2. **工具链层：`git clone && bash install.sh`**。skills / hooks（PostToolUse）对已启动会话动态生效，clone + install 后即可用本仓的 slash commands；SessionStart hook 已过触发时点，别依赖它做云端初始化。
 3. **平台能力层：内置 GitHub MCP + routine 的 `sources`**。issue / PR 交互一律走 MCP（`gh` 未装、REST API 被 403，包装它们的本机 helper 一概不可用）；要访问的私有仓在 `sources` 里声明。
 

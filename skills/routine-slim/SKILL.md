@@ -1,7 +1,6 @@
 ---
 name: routine-slim
-description: 云端 routine：按增长阈值触发，把指令面（skills / playbooks）按三板斧精简一轮并出 PR（PR 即审批闸）。只搬走不蒸发，每条删减在 PR 里记三列。宪法与本仓 CLAUDE.md 只报告不动手。每周日定时调用，也可本机手动跑（支持 --dry-run）
-disable-model-invocation: false
+description: 云端 routine：按增长阈值触发，把指令面（skills / playbooks）按三板斧精简一轮并出 PR（PR 即审批闸）。只搬走不蒸发，每条删减在 PR 里记三列。宪法与本仓 AGENTS.md 与 CLAUDE.md 兼容入口只报告不动手。每周日定时调用，也可本机手动跑（支持 --dry-run）
 ---
 
 把指令面的膨胀从「只增」拉回「有涨有落」。
@@ -10,7 +9,7 @@ disable-model-invocation: false
 
 本仓所有文档与 skill 的迭代都是**单向增长**——只加不减。实测总字符数（`GLOBAL_AGENTS.md` + `skills/*/SKILL.md` + `playbooks/*.md`）：2026-04 是 32,495，2026-07 是 156,689，**四个月 4.8 倍、中间没有任何一次净减**。
 
-**痛点不是常驻 token**（round51 之后只剩宪法与项目 `CLAUDE.md` 常驻），而是两条：① **单次加载的指令密度**——`/finish` 一跑就吃掉几千 token 的 SKILL.md；② **只增不减的单向棘轮**——没有任何机制把内容拉回去。本 routine 就是那个机制。
+**痛点不是常驻 token**（round51 之后只剩宪法与项目 `AGENTS.md` 常驻），而是两条：① **单次加载的指令密度**——`/finish` 一跑就吃掉几千 token 的 SKILL.md；② **只增不减的单向棘轮**——没有任何机制把内容拉回去。本 routine 就是那个机制。
 
 **精简的正解主要不是「删」，是「分层」和「去重」**：把长 `SKILL.md` 拆成必读骨架 + 按需读的 `references/*.md`，把同一条规则的 N 份复述收敛到单一真源。信息不丢，单次加载量降。
 
@@ -53,7 +52,7 @@ python3 scripts/context_budget.py delta --threshold 15
 | | 内容 |
 | --- | --- |
 | **可自动改** | `skills/*/SKILL.md`、`skills/*/references/*.md`、`playbooks/*.md` |
-| **只报告不动手** | `GLOBAL_AGENTS.md`、本仓 `CLAUDE.md` —— 删减候选单列一节写进 PR 描述，人来定 |
+| **只报告不动手** | `GLOBAL_AGENTS.md`、本仓 `AGENTS.md` 与 `CLAUDE.md` 兼容入口 —— 删减候选单列一节写进 PR 描述，人来定 |
 | **永不碰** | `skills/routine-slim/**`（自身）、`skills/routine-dev/**`、`agents/**`、`.github/**`、`install.sh`、`scripts/**`、`hooks/**`、`templates/**`、`docs/**` |
 
 **为什么宪法只报告不动手**：宪法是唯一每会话每项目都常驻的文件，也是所有 skill 的上位规则。一条能自动改它的 routine 就是能自动改自己上位约束的 routine。
@@ -129,7 +128,7 @@ python3 scripts/context_budget.py measure      # 「后」数据
 2. **保留未动清单**：本次碰过但**刻意没删**的禁止删除项，逐条列出。这是给人 review 用的反向证据——证明清单被真的执行过，而不是没遇到。
 3. **量化**：Step 1 的增长率、每文件前后字符与 token、本次净降。
 4. **`check-refs` 结果**（应为零）。
-5. **宪法 / `CLAUDE.md` 删减候选**（如有）：单列一节，写清候选与理由，**明确标注「本 routine 未动手，需人工决定」**。
+5. **宪法 / 项目规则及兼容入口删减候选**（如有）：单列一节，写清候选与理由，**明确标注「本 routine 未动手，需人工决定」**。
 6. **合入方式**：一行「打 `ff-merge` label 或评论 `/ff` 即 fast-forward 合入」。
 7. 若本批触及 `playbooks/*.md` 或任何 `skills/*` → 显著标一行「**本 PR 修改了指令规则文件，请重点 review**」。
 
@@ -155,20 +154,22 @@ python3 scripts/context_budget.py measure      # 「后」数据
 
 ## 明确不做
 
-- **不碰黑名单**（Step 2.1），**不改 `GLOBAL_AGENTS.md` 与本仓 `CLAUDE.md`**，只报告。
+- **不碰黑名单**（Step 2.1），**不改 `GLOBAL_AGENTS.md`、本仓 `AGENTS.md` 与 `CLAUDE.md` 兼容入口**，只报告。
 - **绝不以任何方式触发合入**（硬安全边界）：不打 `ff-merge` label、不发首词为 `/ff` 的评论、不调任何带合并语义的 API / 工具、不直接推默认分支。**判据是「结果」不是「手段」**——只要一个动作可能让 PR 进入默认分支就不许做，遇到没列进来的新路径按总则判。理由与 `/routine-dev` 相同：`ff-merge` 的准入闸校验「发起人 == 仓库 owner」，而云端 routine 用的就是仓库主人的凭证，**这道闸区分不了「人」和「以人的凭证行事的 agent」**（详见 `skills/routine-dev/references/security-boundary.md` §2）。
 - **不发任何评论**——只通过「开 PR」和「编辑 PR 描述」说话（`ff-merge.yml` 订阅 `issue_comment.created`，从不产生评论就物理上够不着这条触发路径）。
 - **不改写语义、不重排流程步骤、不改任何命令或参数**——只做删除、搬移、以及把成组细则收成一句判断原则。**改不改得动语义拿不准时按不改处理。**
-- **不做 ablation 删除**：不因为「Claude 5 不被告知也会做对」就整条删掉含 WHY 的规则。这条判断缺乏实证，误删要靠下次踩坑才发现——需要时由人决定。
+- **不做 ablation 删除**：不因为「模型不被告知也会做对」就整条删掉含 WHY 的规则。这条判断缺乏实证，误删要靠下次踩坑才发现——需要时由人决定。
 - **不写 SUMMARY / 不调 `/devtree` / 不做沉淀反思**（`/quick` 形态本就不带）。
 
-## 如何注册到 claude.ai Routines
+以下注册步骤仅适用于仍使用 claude.ai Routines 的环境；Codex 不会读取 `RemoteTrigger` 配置，也不能据此认定任务已在 Codex 中注册。迁移到 Codex 调度器时需按当前产品原生能力重新注册，不能复用 CC 参数。
+
+## 兼容：注册到 claude.ai Routines
 
 在 claude.ai 上建一条 routine，**`sources` 挂本仓**，cron 用 UTC（北京时间 = UTC+8；cron 最小间隔 1 小时，见 `playbooks/cloud-routine.md`），周日 01:00 UTC，prompt 只写这一句：
 
 ```
-在 claude-code-global 仓库根目录执行：
-1) 若仓库尚未就绪，git clone https://github.com/pkulijing/claude-code-global.git 并进入；
+在 coding-agent-config 仓库根目录执行：
+1) 若仓库尚未就绪，git clone https://github.com/pkulijing/coding-agent-config.git 并进入；
 2) bash install.sh；
 3) 调用 /routine-slim。
 一切判断以仓库内 skills/routine-slim/SKILL.md 为准，不要在本 prompt 里另做决定。

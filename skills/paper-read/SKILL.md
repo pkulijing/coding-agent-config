@@ -15,7 +15,7 @@ description: 阅读一篇 paper（PDF 或 tex），生成结构化的中文阅�
 - 笔记文件默认命名为 reading-paper-keyword.md
   - paper keyword 是论文最具代表性的关键词，全部小写，多个词用连字符 - 连接
   - 举例：讲 PixelCNN 的论文，文件名就叫 reading-pixel-cnn.md
-- 若项目级 CLAUDE.md / AGENTS.md 另有命名规则，以项目规则为准
+- 若项目级 AGENTS.md（旧项目兼容 CLAUDE.md） 另有命名规则，以项目规则为准
 
 ## 文件格式
 

@@ -2,17 +2,17 @@
 
 > **单一真源**：`templates/` 下的东西怎么落到项目里，只在本文写一遍。`/bootstrap`
 > （首次套用）与 `/sync-project-config`（后续同步 / adopt）共读，两端经 `install.sh`
-> 目录级软链后路径为 `~/.claude/templates/MECHANICS.md`。
+> 目录级软链后路径为 `~/.coding-agent/templates/MECHANICS.md`。
 >
 > **何时读**：这两个 skill **在真正往项目里写文件之前必须先读本文** —— 具体是
 > bootstrap 的 Step 3.3 与 sync 的 2.4 / 4.3。只看流程骨架不落地的（如
 > `--dry-run`、只想知道有哪几步）不必读。
 >
-> 字段 schema 与当初的设计取舍见 `~/.claude/global-repo/docs/11-跨项目共享模板与sync-skill/`。
+> 字段 schema 与当初的设计取舍见 `~/.coding-agent/global-repo/docs/11-跨项目共享模板与sync-skill/`。
 
 ## 1. 目录约定与落点
 
-`~/.claude/templates/` 下两类目录：
+`~/.coding-agent/templates/` 下两类目录：
 
 - **`_common/`** —— 所有项目自动应用、不让用户选，承载 stack-无关资源（issue templates 双套、`labels.yml`、`.prettierrc` 等）。下划线开头的目录都是伪 stack，不进用户选项。
 - **`<stack>/`** —— 技术栈特异。**前端 / 后端正交、可多选叠加**（`python-uv` + `react-vite` 同仓并存）。各 stack 读自己的 `stack.yml` 取 `default_path`（`__subpath__/` 的落点，**缺省 `.`**）与 `label`（选择列表展示名，缺省用目录名）。例：`python-uv` 无 `stack.yml` → 落项目根；`react-vite` 写 `default_path: frontend` → 落 `frontend/`。
@@ -127,3 +127,16 @@ cd frontend && npm install
 
 - **普通文件 → fragment**：`D __subpath__/X` + `A __root__/X.fragment`。目标路径**相同**（如 `python-uv` 的 `__subpath__/.vscode/settings.json`，path `.` → 根；与新的根 `.vscode/settings.json.fragment` 同落根）→ 抑制删除，只做 fragment 合并（内容不变时合并是幂等 no-op，原文件原样保留）。目标**不同**（如 `react-vite` 的 `__subpath__/.vscode/*` 落 `frontend/.vscode/`，新 fragment 落根）→ 二者不矛盾，照常提案删旧 + 合并进根。
 - **普通文件 → 变体组**：`D X` + 多个 `A X.variant.<key>`。这些变体的落地目标都是同一个 `X` → 抑制对 `X` 的删除提案，改按 §3 处理这组变体（老项目 marker 必然无 `variants`，走「需补选」）。净效果：老项目从一份写死的 `.gitlab-ci.yml` 平滑迁到按 runner 选定的变体，文件本身不被误删。
+
+## 7. 项目指令入口（新建与已有项目迁移）
+
+项目根与子目录均以 `AGENTS.md` 保存规则正文；同目录 `CLAUDE.md` 只保留一行 `@AGENTS.md`。Codex 自动读取 `AGENTS.md`，不能依赖 CC 的 `@` 导入机制。模板中若新增领域指令，也必须使用这一结构，不把规则正文再次写进 `CLAUDE.md`。
+
+`/bootstrap` 创建入口；`/sync-project-config` 在 normal sync 与 adopt 两种模式都检查已有入口，独立于模板 diff 与 marker。检查项目内受版本管理的根级及子目录指令，排除依赖、第三方目录与 `.worktrees/` 内的其他 checkout，不跟随目录软链接：
+
+- 只有 `CLAUDE.md` 正文 → 提议在同目录迁移为 `AGENTS.md`，并把 `CLAUDE.md` 改为兼容入口；正文与相对路径的语义保持不变。
+- 两份都有 → 若 `CLAUDE.md` 已是 `@AGENTS.md`，无需操作；若正文等价，保留 `AGENTS.md` 并提议替换兼容入口；若存在差异，列出两边独有规则与冲突，让用户确认合并，绝不覆盖任一方。
+- 只有 `AGENTS.md` → 提议补兼容入口；根级两者都没有 → 提议创建带项目实际信息的 `AGENTS.md` 和兼容入口；子目录无规则则不凭空新建。
+- 遇到文件软链接，先查清真实目标和是否已有共享正文，不向仓外目标写入；将需替换链接的动作单独列为提案。
+
+迁移时检查正文中的 `@路径` 导入：先读取实际目标，再改成明确的「在适用条件下读取某路径」指令或将必要规则合并进正文，让 Codex 能得到原规则；不能只改文件名而遗失导入内容。无法读取或作用域不明确时列为待确认项。所有迁移动作进入 sync 的统一 TODO 与确认流程，只有已获确认的动作才能执行；第二次运行不得重复迁移。已存在的 marker 仍保留原模板 commit，历史 commit 和历史文档不改写。

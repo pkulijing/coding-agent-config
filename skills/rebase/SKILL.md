@@ -1,7 +1,6 @@
 ---
 name: rebase
 description: 诊断本地分支分叉并按清单引导完成 rebase，历史保持 FF 直线
-disable-model-invocation: false
 ---
 
 用户调用此 skill 表示当前本地有分支分叉，需要通过 rebase 把分叉整理成直线历史。
@@ -21,7 +20,7 @@ disable-model-invocation: false
 
 - 当前分支必须是**要被 rebase 的分支**（而不是 base 本身）。若当前分支就是 base（例如无参时当前分支是 `master`），立即停下告知人类。
 - 若人类想整理另一条分支，应先自行切到那条分支（或在对应 worktree 内调用）。
-- `abort` / `continue` 只在 `.git/rebase-*` 存在时才有效；若当前没有进行中的 rebase，应告知人类并退出。
+- `abort` / `continue` 只在 `git rev-parse --git-path rebase-merge` 或 `git rev-parse --git-path rebase-apply` 对应目录存在时才有效；若当前没有进行中的 rebase，应告知人类并退出。
 - 无论是否带参数，**阶段 0 的诊断步骤都要跑**，让人类看到状态再动手。
 
 ## 核心原则（违反任一原则都应立刻停下来问人类）
@@ -57,7 +56,7 @@ disable-model-invocation: false
 
 - 当前位于哪个目录 / worktree / 分支
 - 工作区是否干净
-- 是否已处于进行中的 rebase（检查 `.git/rebase-merge` 或 `.git/rebase-apply`）
+- 是否已处于进行中的 rebase（检查 `git rev-parse --git-path rebase-merge` 或 `git rev-parse --git-path rebase-apply` 返回的路径（linked worktree 的 `.git` 是文件））
 - 识别出的分叉：哪两条分支从哪个 commit 开始分开，各自有几个 commit
 - 建议的 rebase 方向（例如"把 `feat/installsh` 的 3 个 commit rebase 到 `master` 上"）
 

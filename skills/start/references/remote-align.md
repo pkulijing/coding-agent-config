@@ -11,7 +11,7 @@
 
    ```bash
    # ① issue 自身状态：走平台 API，不依赖 fetch 是否成功
-   python3 $HOME/.claude/scripts/platform_issue.py issue-view <N>   # 读 state / stateReason
+   python3 $HOME/.coding-agent/scripts/platform_issue.py issue-view <N>   # 读 state / stateReason
    # ② 关闭它的 commit —— 已合入主分支的
    git log origin/<主分支> -i -E \
        --grep '(^|[^a-z])(close[sd]?|fix(es|ed)?|resolve[sd]?) #<N>([^0-9]|$)' \

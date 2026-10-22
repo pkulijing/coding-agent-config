@@ -9,16 +9,8 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SCHEDULER_DIR="$REPO_DIR/scheduler"
 
-# 选定调度器要服务的 agent home。auto-update.sh 单跑一次即由 install.sh 双轨部署
-# CC 与 Codex 两端，所以只需注册一个调度器；AGENT_HOME 只决定日志 / 节流戳的落点。
-# 优先 ~/.claude；仅装了 Codex 时取 ~/.codex。
-if [ -d "$HOME/.claude" ]; then
-    AGENT_HOME="$HOME/.claude"
-elif [ -d "$HOME/.codex" ]; then
-    AGENT_HOME="$HOME/.codex"
-else
-    AGENT_HOME="$HOME/.claude"
-fi
+# 日志和节流状态统一落在中性配置目录，不依赖 Agent 安装。
+AGENT_HOME="$HOME/.coding-agent"
 mkdir -p "$AGENT_HOME/logs"
 
 GREEN='\033[0;32m'
@@ -39,17 +31,18 @@ render_template() {
         "$1" > "$2"
 }
 
-LAUNCHD_LABEL="com.claude-code-global.auto-update"
+LAUNCHD_LABEL="com.coding-agent-config.auto-update"
+LEGACY_LAUNCHD_LABEL="com.claude-code-global.auto-update"
 
 # job 是否已加载。实测:`launchctl list <label>` 存在 → 0,不存在 → 113。
 # 只判「是否为 0」,不硬编码 113,以免其它 macOS 版本换了码值。
 job_is_loaded() {
-    launchctl list "$LAUNCHD_LABEL" >/dev/null 2>&1
+    launchctl list "${1:-$LAUNCHD_LABEL}" >/dev/null 2>&1
 }
 
 # job 主进程的 PID(job 未加载 / 未在运行时为空)。
 job_pid() {
-    launchctl list "$LAUNCHD_LABEL" 2>/dev/null \
+    launchctl list "${1:-$LAUNCHD_LABEL}" 2>/dev/null \
         | awk -F'= ' '/"PID"/{gsub(/[^0-9]/,"",$2); print $2}' || true
 }
 
@@ -58,7 +51,7 @@ job_pid() {
 # (auto-update.sh → install.sh → scheduler/install.sh),链上必然命中。
 running_inside_job() {
     local jp p
-    jp="$(job_pid)"
+    jp="$(job_pid "${1:-$LAUNCHD_LABEL}")"
     [ -n "$jp" ] || return 1
     p=$$
     while [ -n "$p" ] && [ "$p" -gt 1 ] 2>/dev/null; do
@@ -71,7 +64,7 @@ running_inside_job() {
 }
 
 install_macos() {
-    local plist_dst="$HOME/Library/LaunchAgents/com.claude-code-global.auto-update.plist"
+    local plist_dst="$HOME/Library/LaunchAgents/com.coding-agent-config.auto-update.plist"
     local tmp_plist
     mkdir -p "$HOME/Library/LaunchAgents"
 
@@ -83,6 +76,30 @@ install_macos() {
     # 先渲染到临时文件,好在落盘前跟已装的那份比对
     tmp_plist="$(mktemp)"
     render_template "$SCHEDULER_DIR/launchd.plist.template" "$tmp_plist"
+
+    # 改名迁移时同样不能卸载承载当前进程的旧 job。移除旧 plist，
+    # 让下次登录只加载新名字；当前 job 完成这次更新后自然退出。
+    local legacy_plist="$HOME/Library/LaunchAgents/${LEGACY_LAUNCHD_LABEL}.plist"
+    if running_inside_job "$LEGACY_LAUNCHD_LABEL"; then
+        mv -f "$tmp_plist" "$plist_dst"
+        rm -f "$legacy_plist"
+        warn "旧调度器正在执行本次更新；名称迁移将在下次登录生效"
+        return 0
+    fi
+    if [ -f "$legacy_plist" ]; then
+        launchctl unload "$legacy_plist" 2>/dev/null || true
+        rm -f "$legacy_plist"
+    fi
+    # 自迁移已移除磁盘 plist，旧 job 仍可能留在当前登录会话中。
+    # 此处已确认不由旧 job 承载，可以按 label 清理；失败则不加载第二个 job。
+    if job_is_loaded "$LEGACY_LAUNCHD_LABEL"; then
+        launchctl remove "$LEGACY_LAUNCHD_LABEL" 2>/dev/null || true
+        if job_is_loaded "$LEGACY_LAUNCHD_LABEL"; then
+            rm -f "$tmp_plist"
+            warn "旧调度器仍已加载，停止名称迁移以避免双重调度"
+            return 1
+        fi
+    fi
 
     # ① 已是目标状态(内容一致 + job 已加载)→ 什么都不做。
     #
@@ -138,22 +155,26 @@ install_linux() {
     fi
 
     local unit_dir="$HOME/.config/systemd/user"
-    local svc="$unit_dir/claude-code-global-auto-update.service"
-    local tmr="$unit_dir/claude-code-global-auto-update.timer"
+    local svc="$unit_dir/coding-agent-config-auto-update.service"
+    local tmr="$unit_dir/coding-agent-config-auto-update.timer"
     mkdir -p "$unit_dir"
+
+    # 停旧 timer 不会杀死正在执行更新的 service。
+    systemctl --user disable --now claude-code-global-auto-update.timer 2>/dev/null || true
+    rm -f "$unit_dir/claude-code-global-auto-update.timer" "$unit_dir/claude-code-global-auto-update.service"
 
     render_template "$SCHEDULER_DIR/systemd.service.template" "$svc"
     render_template "$SCHEDULER_DIR/systemd.timer.template" "$tmr"
 
     systemctl --user daemon-reload
     # 幂等:先 disable --now(忽略错误),再 enable --now
-    systemctl --user disable --now claude-code-global-auto-update.timer 2>/dev/null || true
-    if systemctl --user enable --now claude-code-global-auto-update.timer 2>/dev/null; then
+    systemctl --user disable --now coding-agent-config-auto-update.timer 2>/dev/null || true
+    if systemctl --user enable --now coding-agent-config-auto-update.timer 2>/dev/null; then
         success "已注册 systemd user timer(开机后 1min + 每小时跑)"
         info "  unit:   $svc"
         info "  timer:  $tmr"
         info "  日志:   $AGENT_HOME/logs/auto-update.log"
-        info "  状态:   systemctl --user status claude-code-global-auto-update.timer"
+        info "  状态:   systemctl --user status coding-agent-config-auto-update.timer"
     else
         warn "systemctl enable 失败"
         warn "如果不在图形会话中,可能需要先 'loginctl enable-linger $USER' 让 user units 在未登录时也运行"

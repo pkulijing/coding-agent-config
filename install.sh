@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 自动检测仓库根目录
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # 颜色输出
 GREEN='\033[0;32m'
@@ -25,11 +25,11 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 #   - 新 \ 旧（仅新有）→ 新增
 # 实现上等价于：剔除所有 managed 条目 → 合并基线 → 集合天然就等于基线 managed 集合。
 # 用户手动添加的 hook（不带此标记）始终保留。
-MANAGED_MARKER_REGEX="# *@claude-code-global:[A-Za-z0-9_-]+"
+MANAGED_MARKER_REGEX="# *@(claude-code-global|coding-agent-config):[A-Za-z0-9_-]+"
 
 # Codex config.toml 的托管块由一对 marker 注释包裹，整块由 install.sh 重写。
-TOML_MARKER_BEGIN="# >>> claude-code-global managed >>>"
-TOML_MARKER_END="# <<< claude-code-global managed <<<"
+TOML_MARKER_BEGIN="# >>> coding-agent-config managed >>>"
+TOML_MARKER_END="# <<< coding-agent-config managed <<<"
 
 # 从 settings JSON 提取所有 managed hook 的 name 列表（去重排序），输出空格分隔字符串
 # 用法: list_managed_names <json-file>
@@ -40,8 +40,8 @@ list_managed_names() {
       [
         .hooks // {} | to_entries[].value[]?.hooks[]?
         | (.command // "")
-        | select(test("# *@claude-code-global:[A-Za-z0-9_-]+"))
-        | capture("# *@claude-code-global:(?<n>[A-Za-z0-9_-]+)").n
+        | select(test("# *@(claude-code-global|coding-agent-config):[A-Za-z0-9_-]+"))
+        | capture("# *@(claude-code-global|coding-agent-config):(?<n>[A-Za-z0-9_-]+)").n
       ] | unique | join(" ")
     ' "$file" 2>/dev/null || echo ""
 }
@@ -144,9 +144,9 @@ merge_settings() {
 # 用法: extract_toml_block <file>
 extract_toml_block() {
     awk -v b="$TOML_MARKER_BEGIN" -v e="$TOML_MARKER_END" '
-        $0 == b { inblk = 1 }
+        $0 == b || $0 == "# >>> claude-code-global managed >>>" { inblk = 1 }
         inblk   { print }
-        $0 == e { inblk = 0 }
+        $0 == e || $0 == "# <<< claude-code-global managed <<<" { inblk = 0 }
     ' "$1"
 }
 
@@ -181,7 +181,7 @@ merge_toml() {
     fi
 
     local ts
-    if grep -qF "$TOML_MARKER_BEGIN" "$dst"; then
+    if grep -qE "^# >>> (claude-code-global|coding-agent-config) managed >>>$" "$dst"; then
         # 已有 marker 块：比较是否需要更新
         local current_block
         current_block="$(extract_toml_block "$dst")"
@@ -197,13 +197,13 @@ merge_toml() {
         merged_file="$(mktemp)"
         printf '%s\n' "$block" > "$block_file"
         awk -v b="$TOML_MARKER_BEGIN" -v e="$TOML_MARKER_END" -v nf="$block_file" '
-            $0 == b {
+            $0 == b || $0 == "# >>> claude-code-global managed >>>" {
                 inblk = 1
                 while ((getline line < nf) > 0) print line
                 close(nf)
                 next
             }
-            inblk && $0 == e { inblk = 0; next }
+            inblk && ($0 == e || $0 == "# <<< claude-code-global managed <<<") { inblk = 0; next }
             inblk { next }
             { print }
         ' "$dst" > "$merged_file"
@@ -275,6 +275,58 @@ link_item() {
     fi
 }
 
+# 改名后旧源码根可能已不存在；更新任何入口前，记录旧安装的成对身份链接。
+# 不靠目录名或技能名认亲，避免误接管同名第三方内容。
+CCG_MANAGED_ROOTS=""
+ccg_is_managed_root() {
+    [ -f "$1/GLOBAL_AGENTS.md" ] && [ -f "$1/install.sh" ] && return 0
+    printf '%s\n' "$CCG_MANAGED_ROOTS" | grep -Fxq -- "$1"
+}
+
+ccg_discover_managed_roots() {
+    local home root doc
+    CCG_MANAGED_ROOTS="$REPO_DIR"
+    for home in "$HOME/.codex" "${CODEX_HOME:-$HOME/.codex}" "$HOME/.claude" "$HOME/.coding-agent"; do
+        [ -L "$home/global-repo" ] || continue
+        root="$(readlink "$home/global-repo")"
+        case "$root" in /*) ;; *) continue ;; esac
+        for doc in "$home/AGENTS.md" "$home/CLAUDE.md" "$home/skills"; do
+            [ -L "$doc" ] || continue
+            case "$(readlink "$doc")" in
+                "$root/GLOBAL_AGENTS.md"|"$root/skills")
+                    CCG_MANAGED_ROOTS="$CCG_MANAGED_ROOTS
+$root"
+                    break ;;
+            esac
+        done
+    done
+}
+
+# 旧版本曾逐文件部署 scripts/hooks、目录部署模板等；只修复已认亲的旧投影。
+# 保留真实目录及第三方文件，已迁入口都转向中性稳定路径以承受源码目录改名。
+ccg_repair_legacy_resources() {
+    local home="$1" rel link target owner file
+    for rel in scripts hooks templates playbooks global-repo; do
+        link="$home/$rel"
+        if [ -L "$link" ]; then
+            target="$(readlink "$link")"
+            if [ "$rel" = global-repo ]; then owner="$target"; else owner="${target%/"$rel"}"; fi
+            if ccg_is_managed_root "$owner"; then
+                link_item "$HOME/.coding-agent/$rel" "$link"
+            fi
+        elif [ -d "$link" ] && { [ "$rel" = scripts ] || [ "$rel" = hooks ]; }; then
+            for file in "$link"/*; do
+                [ -L "$file" ] || continue
+                target="$(readlink "$file")"
+                owner="${target%/"$rel"/"$(basename "$file")"}"
+                [ "$owner" != "$target" ] || continue
+                ccg_is_managed_root "$owner" || continue
+                link_item "$HOME/.coding-agent/$rel/$(basename "$file")" "$file"
+            done
+        fi
+    done
+}
+
 # 清理本仓改名 / 迁移后留在 agent 端的旧软链。
 # 用法: unlink_legacy_dir <链接路径> [软链目标相对仓库根的路径，默认 rules]
 #
@@ -307,125 +359,81 @@ unlink_legacy_dir() {
     *) return 0 ;;
     esac
     parent="${target%/"$rel"}"
-    [ -f "${parent}/GLOBAL_AGENTS.md" ] && [ -f "${parent}/install.sh" ] || return 0
+    ccg_is_managed_root "$parent" || return 0
 
     rm -f "$link"
     info "已清理旧的 ${link}（指向 ${rel}，已改名或迁移）"
 }
 
-# 部署一个 agent 端：软链 skills/hooks/scripts/templates/global-repo + 主指令文档，
-# 并合并各端的 settings/config 基线。
-# 用法: deploy_agent <agent_home> <主指令文档名> <agent 标签> <config 类型: json|toml> <是否链 agents: yes|no>
-#
-# 末位参数单独存在、不复用 config_kind 判断：agents/ 是不是该链，取决于「该端有没有
-# 子 agent 定义这个概念」，与「配置文件是 JSON 还是 TOML」无关。拿 config_kind 当
-# 「是不是 CC」的替身，等下次有第三端或 Codex 支持了子 agent，就会静默链错。
-deploy_agent() {
-    local agent_home="$1"
-    local main_doc="$2"
-    local label="$3"
-    local config_kind="$4"
-    local link_agents="${5:-no}"
+# 共享资源只有一份；Agent 原生目录仅提供各自要求的发现入口。
+deploy_shared() {
+    local shared="$HOME/.coding-agent" name
+    mkdir -p "$shared"
+    for name in scripts templates playbooks skills hooks agents; do
+        [ -d "$REPO_DIR/$name" ] || continue
+        link_item "$REPO_DIR/$name" "$shared/$name"
+    done
+    link_item "$REPO_DIR" "$shared/global-repo"
+}
 
-    echo ""
-    echo "------------------------------"
-    info "部署 ${label}：${agent_home}"
-    echo "------------------------------"
-
-    mkdir -p "$agent_home/skills" "$agent_home/hooks" "$agent_home/scripts"
-
-    # 主指令文档（GLOBAL_AGENTS.md → ~/.claude/CLAUDE.md 或 ~/.codex/AGENTS.md）
-    if [ -f "$REPO_DIR/GLOBAL_AGENTS.md" ]; then
-        link_item "$REPO_DIR/GLOBAL_AGENTS.md" "$agent_home/$main_doc"
-    else
-        warn "仓库中未找到 GLOBAL_AGENTS.md，跳过"
-    fi
-
-    # skills（逐个子目录）
-    if [ -d "$REPO_DIR/skills" ]; then
-        for skill_dir in "$REPO_DIR/skills"/*/; do
-            [ -d "$skill_dir" ] || continue
-            local skill_name
-            skill_name="$(basename "$skill_dir")"
-            link_item "$REPO_DIR/skills/$skill_name" "$agent_home/skills/$skill_name"
+# 只移除能认出属于本仓的旧技能软链，不触碰第三方技能或真实目录。
+deploy_skills() {
+    local dst="$1" legacy="${2:-}" skill_dir skill_name
+    mkdir -p "$dst"
+    if [ -n "$legacy" ]; then
+        for skill_dir in "$legacy"/*; do
+            [ -L "$skill_dir" ] || continue
+            unlink_legacy_dir "$skill_dir" "skills/$(basename "$skill_dir")"
         done
-    else
-        warn "仓库中未找到 skills/ 目录，跳过"
     fi
+    for skill_dir in "$REPO_DIR/skills"/*/; do
+        [ -d "$skill_dir" ] || continue
+        skill_name="$(basename "$skill_dir")"
+        local existing="$dst/$skill_name" target owner
+        if [ -e "$existing" ] || [ -L "$existing" ]; then
+            target="$(readlink "$existing" 2>/dev/null || true)"
+            owner="${target%/skills/"$skill_name"}"
+            if [ ! -L "$existing" ] || { [ "$target" != "$HOME/.coding-agent/skills/$skill_name" ] &&
+               { [ "$owner" = "$target" ] || ! ccg_is_managed_root "$owner"; }; }; then
+                warn "保留非本仓管理的同名技能：$existing"
+                continue
+            fi
+        fi
+        link_item "$HOME/.coding-agent/skills/$skill_name" "$dst/$skill_name"
+    done
+}
 
-    # hooks（逐个文件）
-    if [ -d "$REPO_DIR/hooks" ]; then
-        for hook_path in "$REPO_DIR/hooks"/*; do
-            [ -e "$hook_path" ] || continue
-            local hook_name
-            hook_name="$(basename "$hook_path")"
-            link_item "$REPO_DIR/hooks/$hook_name" "$agent_home/hooks/$hook_name"
-        done
-    else
-        warn "仓库中未找到 hooks/ 目录，跳过"
-    fi
+# 全局与项目规则相加可能超过 Codex 默认读取上限；仅补缺，用户值优先。
+seed_codex_doc_budget() {
+    local dst="$1" tmp
+    grep -qE '^[[:space:]]*project_doc_max_bytes[[:space:]]*=' "$dst" && return 0
+    tmp="$(mktemp)"
+    printf 'project_doc_max_bytes = 65536\n' > "$tmp"
+    cat "$dst" >> "$tmp"
+    cp "$dst" "${dst}.bak.$(date +%Y%m%d-%H%M%S).doc-budget"
+    mv "$tmp" "$dst"
+}
 
-    # scripts（逐个文件）
-    if [ -d "$REPO_DIR/scripts" ]; then
-        for script_path in "$REPO_DIR/scripts"/*; do
-            [ -e "$script_path" ] || continue
-            local script_name
-            script_name="$(basename "$script_path")"
-            link_item "$REPO_DIR/scripts/$script_name" "$agent_home/scripts/$script_name"
-        done
-    else
-        warn "仓库中未找到 scripts/ 目录，跳过"
-    fi
-
-    # templates 目录
-    if [ -d "$REPO_DIR/templates" ]; then
-        link_item "$REPO_DIR/templates" "$agent_home/templates"
-    else
-        warn "仓库中未找到 templates/ 目录，跳过"
-    fi
-
-    # 旧路径迁移：曾软链到 <agent_home>/rules，而 rules 是 CC 保留目录名（见 unlink_legacy_dir）
+deploy_codex() {
+    local agent_home="${CODEX_HOME:-$HOME/.codex}"
+    mkdir -p "$agent_home"
+    link_item "$REPO_DIR/GLOBAL_AGENTS.md" "$agent_home/AGENTS.md"
+    deploy_skills "$HOME/.agents/skills" "$agent_home/skills"
     unlink_legacy_dir "$agent_home/rules"
-    # 旧路径迁移：skills/routine-docs 于 round 54 改名为 skills/routine-dev
+    merge_toml "$REPO_DIR/codex.config.base.toml" "$agent_home/config.toml"
+    seed_codex_doc_budget "$agent_home/config.toml"
+}
+
+# Claude Code 仅在已有安装时保留兼容入口，不是 Codex 的运行前提。
+deploy_claude_compat() {
+    local agent_home="$HOME/.claude"
+    [ -d "$agent_home" ] || return 0
+    link_item "$REPO_DIR/GLOBAL_AGENTS.md" "$agent_home/CLAUDE.md"
+    deploy_skills "$agent_home/skills"
+    unlink_legacy_dir "$agent_home/rules"
     unlink_legacy_dir "$agent_home/skills/routine-docs" "skills/routine-docs"
-
-    # playbooks 目录（领域规则文档，按 <topic>.md 组织；目录级软链，新增 md 不需要重跑 install）
-    if [ -d "$REPO_DIR/playbooks" ]; then
-        link_item "$REPO_DIR/playbooks" "$agent_home/playbooks"
-    else
-        warn "仓库中未找到 playbooks/ 目录，跳过"
-    fi
-
-    # agents 目录（子 agent 定义；目录级软链，新增 .md 不需要重跑 install）
-    #
-    # 只在 CC 端链：`~/.claude/agents/` 是 CC 专有机制，Codex 没有对应概念，链过去是死链接。
-    # 这些定义钉死了 reviewer 编队的 model 与 effort —— 没有它们，子 agent 会继承主会话
-    # 的思考档（主会话在 xhigh 时全编队跟着 xhigh 跑），成本与延迟都失控。见 docs/53-*/。
-    if [ "$link_agents" = "yes" ]; then
-        if [ -d "$REPO_DIR/agents" ]; then
-            link_item "$REPO_DIR/agents" "$agent_home/agents"
-        else
-            warn "仓库中未找到 agents/ 目录，跳过"
-        fi
-    fi
-
-    # 仓库根 → global-repo（供 /sync-project-config 访问模板 git 历史）
-    link_item "$REPO_DIR" "$agent_home/global-repo"
-
-    # settings / config 合并（CC 用 JSON，Codex 用 TOML）
-    if [ "$config_kind" = "json" ]; then
-        if [ -f "$REPO_DIR/settings.base.json" ]; then
-            merge_settings "$REPO_DIR/settings.base.json" "$agent_home/settings.json"
-        else
-            warn "仓库中未找到 settings.base.json，跳过"
-        fi
-    else
-        if [ -f "$REPO_DIR/codex.config.base.toml" ]; then
-            merge_toml "$REPO_DIR/codex.config.base.toml" "$agent_home/config.toml"
-        else
-            warn "仓库中未找到 codex.config.base.toml，跳过"
-        fi
-    fi
+    [ ! -d "$REPO_DIR/agents" ] || link_item "$REPO_DIR/agents" "$agent_home/agents"
+    merge_settings "$REPO_DIR/settings.base.json" "$agent_home/settings.json"
 }
 
 # 判断目录是否位于 git linked worktree 内（主 checkout、非 git 目录都返回非 0）。
@@ -471,32 +479,13 @@ echo "=============================="
 echo ""
 info "仓库目录: $REPO_DIR"
 
-# 双轨部署：检测 ~/.claude（Claude Code）与 ~/.codex（Codex）各自是否存在，
-# 对存在的一侧部署，缺哪侧跳过哪侧。agent 自身安装时会创建其 home 目录。
-DEPLOYED_ANY=0
-DEPLOYED_CODEX=0
-
-if [ -d "$HOME/.claude" ]; then
-    deploy_agent "$HOME/.claude" "CLAUDE.md" "Claude Code" "json" "yes"
-    DEPLOYED_ANY=1
-else
-    info "未检测到 ~/.claude，跳过 Claude Code 端"
-fi
-
-if [ -d "$HOME/.codex" ]; then
-    deploy_agent "$HOME/.codex" "AGENTS.md" "Codex" "toml" "no"
-    DEPLOYED_ANY=1
-    DEPLOYED_CODEX=1
-else
-    info "未检测到 ~/.codex，跳过 Codex 端"
-fi
-
-if [ "$DEPLOYED_ANY" = "0" ]; then
-    echo ""
-    warn "未检测到 ~/.claude 或 ~/.codex，未部署任何 agent。"
-    warn "请先安装 Claude Code 或 Codex CLI（它们会创建各自的 home 目录），再重跑本脚本。"
-    exit 0
-fi
+ccg_discover_managed_roots
+deploy_shared
+deploy_codex
+deploy_claude_compat
+ccg_repair_legacy_resources "${CODEX_HOME:-$HOME/.codex}"
+[ "${CODEX_HOME:-$HOME/.codex}" = "$HOME/.codex" ] || ccg_repair_legacy_resources "$HOME/.codex"
+[ ! -d "$HOME/.claude" ] || ccg_repair_legacy_resources "$HOME/.claude"
 
 # 用户可配置项：seed 真实配置 + 应用偏好（全局一次，与具体 agent 端无关）
 # 机制见 scripts/user-config.sh 与 docs/27-用户可配置项机制/DESIGN.md
@@ -538,7 +527,5 @@ echo "=============================="
 echo " 安装完成"
 echo "=============================="
 
-if [ "$DEPLOYED_CODEX" = "1" ]; then
-    echo ""
-    warn "Codex hooks 首次需进入 Codex 跑一次 /hooks 命令 review 后才会生效。"
-fi
+echo ""
+warn "Codex hooks 需在 Codex 的 /hooks 中审阅并信任当前定义后才会生效。"

@@ -1,7 +1,6 @@
 ---
 name: backlog
 description: 把一条 backlog 创建成 issue（GitHub / GitLab 自动双轨，含三轴 label）—— issue 即单一真源，无本地索引文件
-disable-model-invocation: false
 ---
 
 用户调用此 skill 表示要新增一条 backlog。「issue 是单一真源、无本地索引文件、open 项速览走 saved query」这套原则见 `GLOBAL_AGENTS.md`「需求管理」，此处不复述。本 skill 只做一件事：
@@ -10,18 +9,18 @@ disable-model-invocation: false
 
 issue 关闭仍由 `/finish` 完成（commit 写 `Closes #N`，语义同上）。
 
-所有平台耦合的 CLI 调用都通过 helper `python3 $HOME/.claude/scripts/platform_issue.py <subcommand>`，本 SKILL 不直接调 `gh` / `glab`。**给已有 issue 补材料（实测数据、验证产物、决策更正）走 `issue-comment`，同样不许直调 `gh issue comment`** —— 契约见 `scripts/platform_issue.md`。
+所有平台耦合的 CLI 调用都通过 helper `python3 $HOME/.coding-agent/scripts/platform_issue.py <subcommand>`，本 SKILL 不直接调 `gh` / `glab`。**给已有 issue 补材料（实测数据、验证产物、决策更正）走 `issue-comment`，同样不许直调 `gh issue comment`** —— 契约见 `~/.coding-agent/scripts/platform_issue.md`。
 
 ## 前置检查
 
 按顺序，**任一失败立即停止并报告**：
 
 - `git rev-parse --is-inside-work-tree` → 必须是 git 仓库
-- `python3 $HOME/.claude/scripts/platform_issue.py detect-platform` → exit 0 才算识别到 GitHub / GitLab
-- `python3 $HOME/.claude/scripts/platform_issue.py auth-status` → 对应平台 CLI 必须已登录
+- `python3 $HOME/.coding-agent/scripts/platform_issue.py detect-platform` → exit 0 才算识别到 GitHub / GitLab
+- `python3 $HOME/.coding-agent/scripts/platform_issue.py auth-status` → 对应平台 CLI 必须已登录
 - `.github/ISSUE_TEMPLATE/feat.md` 等模板存在 → 否则提示「先 `/sync-project-config` 同步模板」（GitHub / GitLab 两端模板共存于同一项目，本检查对两端等价）
 
-上面两条 helper 调用的非零退出，一律按 `scripts/platform_issue.md`「exit code 降级」表给提示，本 skill 不复述。
+上面两条 helper 调用的非零退出，一律按 `~/.coding-agent/scripts/platform_issue.md`「exit code 降级」表给提示，本 skill 不复述。
 
 ## 参数处理
 
@@ -46,7 +45,7 @@ issue 关闭仍由 `/finish` 完成（commit 写 `Closes #N`，语义同上）�
 
 ### Step 3：选 area
 
-读 `.github/labels.yml`（或缺失时 `python3 $HOME/.claude/scripts/platform_issue.py label-list` 取 fallback）拿 `area:*` 列表。**GitLab 项目同样读 `.github/` 下这一份**（缘由见 `scripts/platform_issue.md`「label-sync-from-file 语义」）。
+读 `.github/labels.yml`（或缺失时 `python3 $HOME/.coding-agent/scripts/platform_issue.py label-list` 取 fallback）拿 `area:*` 列表。**GitLab 项目同样读 `.github/` 下这一份**（缘由见 `~/.coding-agent/scripts/platform_issue.md`「label-sync-from-file 语义」）。
 
 询问用户，让其从 area 列表中选一条。如列表为空（仅 placeholder），允许用户输入新 area 名（warn 一句「这个 area 不在 labels.yml 中，建议本轮结束后补到 labels.yml + 跑 `/sync-project-config` 同步到远端 labels」）。
 
@@ -60,10 +59,10 @@ issue 关闭仍由 `/finish` 完成（commit 写 `Closes #N`，语义同上）�
 
 ### Step 6：执行 —— 创建 issue
 
-把 Step 5 确认过的 body 内容写到临时文件 `/tmp/backlog-body.md`（用 Write 工具），再调 helper：
+把 Step 5 确认过的 body 内容写到临时文件 `/tmp/backlog-body.md`（用当前平台的文件写入工具），再调 helper：
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-create \
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-create \
   --title "<标题>" \
   --body-file /tmp/backlog-body.md \
   --label "type:<X>" \
@@ -80,6 +79,6 @@ helper stdout 输出新建 issue 的 URL（单行），从中提取 issue 号 `#
 - GitHub：`https://github.com/{slug}/issues?q=is%3Aissue+is%3Aopen+label%3Apriority%3AP0%2Cpriority%3AP1%2Cpriority%3AP2`
 - GitLab：`https://gitlab.com/{slug}/-/issues?state=opened&label_name[]=priority:P0&label_name[]=priority:P1&label_name[]=priority:P2`（自托管把 host 换成对应实例域名）
 
-`{slug}` 由 `python3 $HOME/.claude/scripts/platform_issue.py repo-slug` 获取（GitHub 端 `owner/repo`，GitLab 端 `namespace/project`）。
+`{slug}` 由 `python3 $HOME/.coding-agent/scripts/platform_issue.py repo-slug` 获取（GitHub 端 `owner/repo`，GitLab 端 `namespace/project`）。
 
 **不调用 `/commit`** —— 本 skill 只动云端 issue、不改任何本地文件，无需 commit。

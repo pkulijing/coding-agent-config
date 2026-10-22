@@ -5,16 +5,16 @@
 ## 调用形式
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py [--platform github|gitlab] [--repo <slug>] <subcommand> ...
+python3 $HOME/.coding-agent/scripts/platform_issue.py [--platform github|gitlab] [--repo <slug>] <subcommand> ...
 ```
 
-- `--platform` / `--repo` 省略时按当前仓库 `git remote` 自动判定、对本仓库操作；跨仓库操作（如向 claude-code-global 沉淀 issue）显式带 `--repo <slug>`。
+- `--platform` / `--repo` 省略时按当前仓库 `git remote` 自动判定、对本仓库操作；跨仓库操作（如向 coding-agent-config 沉淀 issue）显式带 `--repo <slug>`。
 - 常用子命令：`issue-view <N>`、`issue-create`、`issue-comment`、`issue-label-add` / `issue-label-remove`、`label-list`、`label-sync-from-file <path>`。
 
 ## issue-view 语义
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-view <N> [--with-comments]
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-view <N> [--with-comments]
 ```
 
 stdout 是归一 json：`number` / `title` / `body` / `url` / `labels` / `state` / `stateReason`（GitLab 的 `iid` / `description` / `web_url` 已在 helper 内归一）。`--with-comments` 再加 `comments` 与 `ownerHint`（**GitHub only**，GitLab 侧 notes 能力未实测，`comments` 恒空并在 stderr 留 `note:`）。
@@ -26,7 +26,7 @@ stdout 是归一 json：`number` / `title` / `body` / `url` / `labels` / `state`
 ## issue-list 语义
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-list [--limit N] [--repo <slug>] [--no-body]
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-list [--limit N] [--repo <slug>] [--no-body]
 ```
 
 只列 **open** issue，stdout 是归一 json **数组**，每项 schema 与 `issue-view` 完全一致（`number` / `title` / `body` / `url` / `labels` / `updatedAt` / `state`，末者只列 open 故恒为 `open`）—— 消费方（`/triage`）据此读 `labels` 取 priority 轴、读 `body` 取 scope 字段，不必关心是哪端答的。`--limit` 默认 100（GitHub `--limit` ↔ GitLab `--per-page`）。
@@ -37,7 +37,7 @@ python3 $HOME/.claude/scripts/platform_issue.py issue-list [--limit N] [--repo <
 ## issue-comment 语义
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-comment --issue <N> --body-file <F> [--repo <slug>]
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-comment --issue <N> --body-file <F> [--repo <slug>]
 ```
 
 **「issue 是单一真源」的工作流下，沉淀讨论与结论的动作本身就是评论** —— 补实测数据、贴验证产物、记录决策更正、写 spike 结论。缺了它，单一真源就只能写不能续，于是只剩「违反规则直调 `gh`」或「做不成事」两条坏路。
@@ -55,8 +55,8 @@ python3 $HOME/.claude/scripts/platform_issue.py issue-comment --issue <N> --body
 ## issue-label-add / issue-label-remove 语义
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-label-add    --issue <N> --label <X> [--label <Y>] [--repo <slug>]
-python3 $HOME/.claude/scripts/platform_issue.py issue-label-remove --issue <N> --label <X> [--repo <slug>]
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-label-add    --issue <N> --label <X> [--label <Y>] [--repo <slug>]
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-label-remove --issue <N> --label <X> [--repo <slug>]
 ```
 
 两端连子命令带 flag 名都不同：

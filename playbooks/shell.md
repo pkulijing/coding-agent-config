@@ -1,6 +1,6 @@
 # Shell 脚本开发规则
 
-> 本文档由 `claude-code-global` 仓库的 `playbooks/shell.md` 提供，经 `install.sh` 双轨软链到 `~/.claude/playbooks/shell.md`（CC 端）与 `~/.codex/playbooks/shell.md`（Codex 端）。修改请回到 `claude-code-global` 仓库，不要直接编辑软链目标。
+> 本文档由 `coding-agent-config` 仓库的 `playbooks/shell.md` 提供，经 `install.sh` 共享软链到 `~/.coding-agent/playbooks/shell.md`。修改请回到 `coding-agent-config` 仓库，不要直接编辑软链目标。
 >
 > **触发条件**：Coding Agent 在本轮任务涉及生成 / 编辑 **bash / shell 脚本**（含**经 ssh / 定时器 / CI 非交互式执行**的脚本），或**向用户给出需要他手动粘贴执行的 shell 命令**时，**必须先把本文件读入上下文**，再开始动手。
 

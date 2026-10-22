@@ -1,7 +1,6 @@
 ---
 name: finish
-description: 完成当前开发项：撰写 SUMMARY.md，反思跨项目可沉淀流程并可向 claude-code-global 提 issue，关联并关闭 issue（GitHub / GitLab，如有），提交代码
-disable-model-invocation: false
+description: 完成当前开发项：撰写 SUMMARY.md，反思跨项目可沉淀流程并可向 coding-agent-config 提 issue，关联并关闭 issue（GitHub / GitLab，如有），提交代码
 ---
 
 用户调用此 skill 表示当前开发项已完成。
@@ -40,7 +39,7 @@ disable-model-invocation: false
 用户给出条目 + 原因 → **归档为带 `wontfix` 的 closed issue**（与「issue 是真源」一致、可检索）。二选一：① 用户跑 `/backlog` 起 issue、三轴之外额外加 `wontfix`，建完随即 close；② 本步直接建：
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-create \
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-create \
   --title "刻意不做：<一句话>" --body-file /tmp/wontfix.md \
   --label wontfix --label type:docs --label area:<Y> --label priority:P2
 # 建完 close：gh issue close <N> -r "not planned"  /  glab issue close <N>
@@ -54,7 +53,7 @@ body 写原因 + SUMMARY 路径。`wontfix` label 缺失先补进 `.github/label
 
 ## Step 3 · 跨项目可沉淀流程反思（在任意项目都跑）
 
-开发轮里冒出的「值得复用的重复流程」常散落对话里靠人捡、易错过抽象时机。这里主动反思，对**跨项目资产**类候选直接向 claude-code-global 跨仓库提 issue。
+开发轮里冒出的「值得复用的重复流程」常散落对话里靠人捡、易错过抽象时机。这里主动反思，对**跨项目资产**类候选直接向 coding-agent-config 跨仓库提 issue。
 
 ### 3.1 候选判据
 
@@ -64,12 +63,12 @@ body 写原因 + SUMMARY 路径。`wontfix` label 缺失先补进 `.github/label
 
 ### 3.2 去向分类
 
-- **跨项目资产** → 跨仓库提 issue 到 claude-code-global（改共享模板，或新增 skill / hook / 写进宪法）
+- **跨项目资产** → 跨仓库提 issue 到 coding-agent-config（改共享模板，或新增 skill / hook / 写进宪法）
 - **仅当前项目可复用** → 文字建议「在本项目跑 `/backlog` 起本地 issue」，本步**不**替用户 file
 
 ### 3.3 自指守卫
 
-**当前仓库就是 claude-code-global**（`git rev-parse --show-toplevel` == `realpath "$HOME/.claude/global-repo"`）→ 跨项目候选改为建议走**本地 `/backlog`**，不 API 自 file。本步剩余跳过。
+**当前仓库就是 coding-agent-config**（`git rev-parse --show-toplevel` == `realpath "$HOME/.coding-agent/global-repo"`）→ 跨项目候选改为建议走**本地 `/backlog`**，不 API 自 file。本步剩余跳过。
 
 ### 3.4 逐条确认（外部可见动作，不自动 file）
 
@@ -80,18 +79,18 @@ body 写原因 + SUMMARY 路径。`wontfix` label 缺失先补进 `.github/label
 1. **派生目标 slug 与 platform**（不硬编码，多设备 / 改名都成立）：
 
    ```bash
-   GLOBAL_DIR="$HOME/.claude/global-repo"
+   GLOBAL_DIR="$HOME/.coding-agent/global-repo"
    URL=$(git -C "$GLOBAL_DIR" remote get-url origin)
    SLUG=$(printf '%s' "$URL" | sed -E 's#\.git$##; s#^git@[^:]+:##; s#^https?://[^/]+/##')
    case "$URL" in *github.com*) PLAT=github ;; *gitlab*) PLAT=gitlab ;; *) PLAT="" ;; esac
    ```
 
-   目录不存在 / `URL` 取不到 / `PLAT` 空 → 跳过 file，提示「无法定位 claude-code-global，候选已记在 SUMMARY 可沉淀项段」，**不阻塞 finish**。
+   目录不存在 / `URL` 取不到 / `PLAT` 空 → 跳过 file，提示「无法定位 coding-agent-config，候选已记在 SUMMARY 可沉淀项段」，**不阻塞 finish**。
 
 2. **选并校验三轴 label**：`type:*` + `priority:P2`（沉淀项默认排队）+ `area:*`（读 `$GLOBAL_DIR/.github/labels.yml` 选最贴的一个）。**三轴是硬要求**，且选完必须对**目标仓库**校验三个 label 都真实存在：
 
    ```bash
-   python3 "$HOME/.claude/scripts/platform_issue.py" --platform "$PLAT" label-list --repo "$SLUG"
+   python3 "$HOME/.coding-agent/scripts/platform_issue.py" --platform "$PLAT" label-list --repo "$SLUG"
    ```
 
    只从该列表挑，不在列表的不要硬塞（为什么必须校验、以及硬塞失败后的补救路径，见 `scripts/platform_issue.md`「三轴 label 硬约束」）。

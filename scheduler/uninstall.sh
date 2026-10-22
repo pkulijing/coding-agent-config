@@ -13,27 +13,35 @@ OS="$(uname -s)"
 
 case "$OS" in
     Darwin)
-        plist="$HOME/Library/LaunchAgents/com.claude-code-global.auto-update.plist"
-        if [ -f "$plist" ]; then
-            launchctl unload "$plist" 2>/dev/null || true
-            rm -f "$plist"
-            success "已移除 launchd 调度器"
-        else
-            warn "未找到 plist,无需移除"
-        fi
+        for label in com.coding-agent-config.auto-update com.claude-code-global.auto-update; do
+            plist="$HOME/Library/LaunchAgents/${label}.plist"
+            if [ -f "$plist" ]; then
+                launchctl unload "$plist" 2>/dev/null || true
+                rm -f "$plist"
+            fi
+            # 旧 job 自迁移后可能只有内存注册，没有磁盘 plist。
+            if launchctl list "$label" >/dev/null 2>&1; then
+                launchctl remove "$label" 2>/dev/null || true
+            fi
+            if launchctl list "$label" >/dev/null 2>&1; then
+                warn "调度器仍已加载：$label"
+                exit 1
+            fi
+        done
+        success "已移除 launchd 调度器"
         ;;
     Linux)
         if command -v systemctl >/dev/null 2>&1; then
-            systemctl --user disable --now claude-code-global-auto-update.timer 2>/dev/null || true
-            rm -f "$HOME/.config/systemd/user/claude-code-global-auto-update.timer"
-            rm -f "$HOME/.config/systemd/user/claude-code-global-auto-update.service"
+            for prefix in coding-agent-config claude-code-global; do
+                systemctl --user disable --now "${prefix}-auto-update.timer" 2>/dev/null || true
+                rm -f "$HOME/.config/systemd/user/${prefix}-auto-update.timer"
+                rm -f "$HOME/.config/systemd/user/${prefix}-auto-update.service"
+            done
             systemctl --user daemon-reload 2>/dev/null || true
             success "已移除 systemd user timer"
         else
             warn "未检测到 systemd,无操作"
         fi
         ;;
-    *)
-        warn "不支持的 OS: $OS"
-        ;;
+    *) warn "不支持的 OS: $OS" ;;
 esac

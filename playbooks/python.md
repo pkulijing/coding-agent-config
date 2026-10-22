@@ -1,6 +1,6 @@
 # Python 开发规则
 
-> 本文档由 `claude-code-global` 仓库的 `playbooks/python.md` 提供，经 `install.sh` 双轨软链到 `~/.claude/playbooks/python.md`（CC 端）与 `~/.codex/playbooks/python.md`（Codex 端）。修改请回到 `claude-code-global` 仓库，不要直接编辑软链目标。
+> 本文档由 `coding-agent-config` 仓库的 `playbooks/python.md` 提供，经 `install.sh` 共享软链到 `~/.coding-agent/playbooks/python.md`。修改请回到 `coding-agent-config` 仓库，不要直接编辑软链目标。
 >
 > **触发条件**：Coding Agent 在本轮任务涉及 Python 代码、`pyproject.toml`、依赖管理、Python 风格判断时，**必须先把本文件读入上下文**，再开始动手。
 
@@ -34,7 +34,7 @@ uv pip install --index-url <清华源> -r requirements.txt
 - **此语境下 `uv pip install -r requirements.txt` 是正确工具、不是违规** —— 依赖清单的所有权在上游，本项目复述一遍只会与它漂移，且升级时无法跟随上游。
 - `third_party/` 自带 `.gitignore` 全忽略：外部应用由上游 git 管理，不入本仓。
 - **用应用自己的配置机制接资源，不造软链** —— 如用 ComfyUI 原生的 `extra_model_paths.yaml` 把本仓的权重目录接过去，零复制零软链。这是宪法「wrapper 原则」（先核实外部工具的原生能力）在资源接入方向上的同一个道理。
-- 项目 `CLAUDE.md` 写明「它是外部应用、不是本项目依赖」，挡住后来者（含 AI）好心把它 `uv add` 进来。
+- 项目 `AGENTS.md` 写明「它是外部应用、不是本项目依赖」，挡住后来者（含 AI）好心把它 `uv add` 进来。
 
 ## 2. 项目骨架（src 布局）
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# claude-code-global 自动同步脚本
+# coding-agent-config 自动同步脚本
 #
 # 唯一触发方是 OS 调度器 (macOS launchd / Linux systemd timer),登录跑 + 每小时跑。
 # 全程静默,信息走日志;30min 节流($AGENT_HOME/.auto-update-last-run)防重复。
@@ -8,7 +8,7 @@
 set -uo pipefail
 
 # ---------- 自定位仓库根 ----------
-# 脚本本体在 <repo>/scripts/auto-update.sh,被软链到 ~/.claude/scripts/ 与 ~/.codex/scripts/。
+# 脚本本体在 <repo>/scripts/auto-update.sh，可经 ~/.coding-agent/scripts/ 目录软链访问。
 # 解析自身真实路径(macOS 的 readlink 不支持 -f,手动循环解软链)。
 SELF="${BASH_SOURCE[0]}"
 while [ -L "$SELF" ]; do
@@ -18,13 +18,13 @@ while [ -L "$SELF" ]; do
         *)  SELF="$(cd "$(dirname "$SELF")" && pwd)/$LINK" ;;
     esac
 done
-REPO_DIR="$(cd "$(dirname "$SELF")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$SELF")" && pwd -P)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # ---------- 常量 ----------
-# AGENT_HOME 指向某个 agent 的配置目录(CC 是 ~/.claude,Codex 是 ~/.codex)。
-# 默认 ~/.claude;由 OS 调度器通过环境变量覆盖。
-# 日志与节流戳落在该目录下,使 Codex-only 机器也能正常工作。
-AGENT_HOME="${AGENT_HOME:-$HOME/.claude}"
+# 共享日志与节流状态不依赖任一 Agent 是否安装。
+AGENT_HOME="${AGENT_HOME:-$HOME/.coding-agent}"
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 THROTTLE_SEC=1800   # 30 分钟
 LOG_DIR="$AGENT_HOME/logs"
 LOG_FILE="$LOG_DIR/auto-update.log"

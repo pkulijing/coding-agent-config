@@ -1,7 +1,6 @@
 ---
 name: routine-dev
 description: 云端 routine 的真逻辑：扫本仓 open issue，把够格自动做的分诊出来（纯文档类自动收；打了 auto:take 的由 owner 背书强制收，可改 skills / templates / scripts / hooks），选出一条走 /quick 做掉、出一个 PR（做不成就换下一条候选，最多试 3 条）（PR 即审批闸，打 ff-merge label 或评论 /ff 即 FF 合入）。由 claude.ai Routines 每周一 / 三 / 五定时调用，也可本机手动跑（支持 --dry-run）
-disable-model-invocation: false
 ---
 
 跑一遍**issue 的自动开发**：扫 open issue → 两条通道分诊 → 选出一条 → 开发 → 一个 PR。**一次运行只出一个 PR**；选中那条做不成就换下一条候选，最多尝试 3 条。
@@ -43,20 +42,20 @@ command -v gh >/dev/null 2>&1 && echo local || echo cloud
 
 | 能力 | 本机（有 `gh`） | 云端（无 `gh`） |
 | --- | --- | --- |
-| 读 / 写 issue、列 / 开 PR | `python3 $HOME/.claude/scripts/platform_issue.py`、`gh pr list` / `gh pr create` | **内置 GitHub MCP 工具** |
+| 读 / 写 issue、列 / 开 PR | `python3 $HOME/.coding-agent/scripts/platform_issue.py`、`gh pr list` / `gh pr create` | **内置 GitHub MCP 工具** |
 | git push | 常规 `git push` | 常规 `git push`（凭证在本地代理里，`https://github.com/` 被透明改写） |
 
 **云端不要试 `gh`、也不要直连 `api.github.com`**：前者根本没装，后者被应用层 403 拒绝 —— `scripts/platform_issue.py` 正因为包的是 `gh` / `glab`，在云端整个不可用。**MCP 工具的确切名称以当次会话可见的工具列表为准，不要凭记忆硬猜**（同一条纪律对**字段名与字段值**也适用）。
 
 **前置闸**（任一不满足 → 打印原因并**中止整次运行**，不要将就着跑）：
 
-1. 当前目录是本仓（`git remote get-url origin` 指向 `claude-code-global`）；
+1. 当前目录是本仓（`git remote get-url origin` 指向 `coding-agent-config`）；
 2. 工作树干净（`git status --porcelain` 为空）；
 3. 已在默认分支且与远端同步（`git fetch origin && git switch <默认分支> && git merge --ff-only origin/<默认分支>`）。
 
 ## Step 1 · 拉 open issue 并分诊
 
-**先只拉 label 层，不拉正文**（本机 `python3 $HOME/.claude/scripts/platform_issue.py issue-list --no-body`；云端用当次会话可见的 issue 列表工具）—— 1.0 分流、1.1 硬过滤、1.3 排序全都只用 labels / title，正文要到 1.2 才需要，而 1.3 的分诊短路意味着**绝大多数 issue 的正文这次根本不会被读**。**便宜的过滤在前，模型判断在后。**
+**先只拉 label 层，不拉正文**（本机 `python3 $HOME/.coding-agent/scripts/platform_issue.py issue-list --no-body`；云端用当次会话可见的 issue 列表工具）—— 1.0 分流、1.1 硬过滤、1.3 排序全都只用 labels / title，正文要到 1.2 才需要，而 1.3 的分诊短路意味着**绝大多数 issue 的正文这次根本不会被读**。**便宜的过滤在前，模型判断在后。**
 
 ### 1.0 先按 `auto:take` 分成两条通道
 
@@ -67,7 +66,7 @@ command -v gh >/dev/null 2>&1 && echo local || echo cloud
 **评论是可选的补充说明，不是授权**：本机可用
 
 ```bash
-python3 $HOME/.claude/scripts/platform_issue.py issue-view <N> --with-comments
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-view <N> --with-comments
 ```
 
 取 `ownerHint` 字段（helper 已过滤出**最新一条 `authorAssociation == "OWNER"`** 的评论，判据在代码里且有单测，不必自己重判身份）。拿到就当作实现提示并入 Step 2 给 `/quick` 的说明。云端 MCP 是否有读评论的工具**未经实测** —— **读不到就不读，绝不阻断**，label 已是充分条件。
@@ -121,7 +120,7 @@ python3 $HOME/.claude/scripts/platform_issue.py issue-view <N> --with-comments
 | 预期落点撞上四条红线 | 事实性 | **不覆盖** —— 跳过，并**显著报告**撞了哪条 |
 | **预期落点撞上任一 open PR 已碰过的文件** | 事实性 | **不覆盖** —— 跳过，记「落点被在途 PR #M 占用」 |
 
-> **判「预期落点」时必须把共享登记文件算进去**：凡是「每新增 / 每改动一个同类条目都要去动一行」的索引 / 目录 / 指针表都算 —— 新增 `playbooks/*.md` 要动 `GLOBAL_AGENTS.md` 的触发表与 `README.md`，新增 skill 要动 `README.md` 与本仓 `CLAUDE.md`，新增 template 要动 `templates/MECHANICS.md`，新增脚本要动 `CLAUDE.md` 的 `scripts/` 那条。**拿不准就当是。** 漏算这一层，本行的预判就形同虚设：会一路做到开 PR 前的真实 diff 复核才发现相交，白烧一整轮开发。
+> **判「预期落点」时必须把共享登记文件算进去**：凡是「每新增 / 每改动一个同类条目都要去动一行」的索引 / 目录 / 指针表都算 —— 新增 `playbooks/*.md` 要动 `GLOBAL_AGENTS.md` 的触发表与 `README.md`，新增 skill 要动 `README.md` 与本仓 `AGENTS.md`，新增 template 要动 `~/.coding-agent/templates/MECHANICS.md`，新增脚本要动 `AGENTS.md` 的 `scripts/` 那条。**拿不准就当是。** 漏算这一层，本行的预判就形同虚设：会一路做到开 PR 前的真实 diff 复核才发现相交，白烧一整轮开发。
 
 **自动通道把表里前四项照旧全部排除**（它们正是「看着像文档、其实不是」的四类）—— 标记通道的存在**不放松任何自动判定的保守度**。自动分诊判错的代价不对称，保守是对的。
 
@@ -271,13 +270,15 @@ push 分支后开 PR（base = 默认分支），标题形如 `<type>: <主题概
 - **落点白名单之外的一律不碰**：白名单是 Step 1.2 那张表，不是「没写禁止就等于允许」。
 - **不写 SUMMARY / 不调 `/devtree` / 不做沉淀反思**（那些是 `/finish` 的活，`/quick` 形态本就不带）。
 
-## 如何注册到 claude.ai Routines
+以下注册步骤仅适用于仍使用 claude.ai Routines 的环境；Codex 不会读取 `RemoteTrigger` 配置，也不能据此认定任务已在 Codex 中注册。迁移到 Codex 调度器时需按当前产品原生能力重新注册，不能复用 CC 参数。
+
+## 兼容：注册到 claude.ai Routines
 
 在 claude.ai 上建一条 routine，**`sources` 挂本仓**，cron 用 UTC（北京时间 = UTC+8 —— **凌晨的时段会退到前一天**，当前的「北京周一 / 三 / 五 02:00」写成 `0 18 * * 0,2,4`，星期字段是 0/2/4 而不是 1/3/5），prompt 只写这一句：
 
 ```
-在 claude-code-global 仓库根目录执行：
-1) 若仓库尚未就绪，git clone https://github.com/pkulijing/claude-code-global.git 并进入；
+在 coding-agent-config 仓库根目录执行：
+1) 若仓库尚未就绪，git clone https://github.com/pkulijing/coding-agent-config.git 并进入；
 2) bash install.sh；
 3) 调用 /routine-dev。
 一切判断以仓库内 skills/routine-dev/SKILL.md 为准，不要在本 prompt 里另做决定。
@@ -287,4 +288,4 @@ push 分支后开 PR（base = 默认分支），标题形如 `<type>: <主题概
 
 ⚠️ **本 skill 曾名 `/routine-docs`。** 网页上的 prompt 是**仓库管不到的唯一一处配置** —— 改名后没同步过去的话，云端会调不到 skill，**而失败发生在无人看的定时任务里，不会有任何人收到通知**。
 
-云端环境的既定事实：`install.sh` 跑得通且 **skills / hooks 对当前会话动态生效**；**仓库自带的 `CLAUDE.md` 会自动进系统提示**（用户级 `~/.claude/CLAUDE.md` 不会）；install 之后**内置 skill 列表会被本仓的替换**（用不了 `dataviz` 等内置 skill）。
+以下仅为旧版 CC 云端的实测记录，新安装器与当前环境须重新核实：`install.sh` 跑得通且 **skills / hooks 对当前会话动态生效**；**仓库自带的 `CLAUDE.md` 会自动进系统提示**（用户级 `~/.claude/CLAUDE.md` 不会）；install 之后**内置 skill 列表会被本仓的替换**（用不了 `dataviz` 等内置 skill）。

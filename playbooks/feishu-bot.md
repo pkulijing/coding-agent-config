@@ -1,6 +1,6 @@
 # 飞书 bot 后端开发规则
 
-> 本文档由 `claude-code-global` 仓库的 `playbooks/feishu-bot.md` 提供，经 `install.sh` 双轨软链到 `~/.claude/playbooks/feishu-bot.md`（CC 端）与 `~/.codex/playbooks/feishu-bot.md`（Codex 端）。修改请回到 `claude-code-global` 仓库，不要直接编辑软链目标。
+> 本文档由 `coding-agent-config` 仓库的 `playbooks/feishu-bot.md` 提供，经 `install.sh` 共享软链到 `~/.coding-agent/playbooks/feishu-bot.md`。修改请回到 `coding-agent-config` 仓库，不要直接编辑软链目标。
 >
 > **触发条件**：Coding Agent 在本轮任务涉及**飞书 bot 后端**——lark-oapi 长连接机器人、事件回调、`im.message.receive` / `card.action.trigger` 等——时，**必须先把本文件读入上下文**，再开始动手。
 

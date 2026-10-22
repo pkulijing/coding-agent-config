@@ -73,14 +73,18 @@ def estimate_tokens(text: str) -> int:
 # resident = 每会话无条件进上下文；lazy = 命中触发条件才读。
 # 注：skill 的 frontmatter `description` 其实也常驻（skill listing，全仓合计约
 # 2k token），但它随 SKILL.md 一起改、单独建模没有收益，故并入 lazy 计。
-RESIDENT = ("GLOBAL_AGENTS.md", "CLAUDE.md")
+RESIDENT = ("GLOBAL_AGENTS.md", "AGENTS.md", "CLAUDE.md")
 LAZY_GLOBS = ("skills/*/SKILL.md", "skills/*/references/*.md", "playbooks/*.md",
               "templates/MECHANICS.md")
 
 
 def instruction_paths(root: Path) -> list[str]:
     """指令面的全部文件，仓库相对路径，稳定排序。"""
-    out = [p for p in RESIDENT if (root / p).is_file()]
+    resident = {p for p in RESIDENT if (root / p).is_file()}
+    # CC 入口导入同一份正文，重复计数会把文件迁移误报成预算增长。
+    if "AGENTS.md" in resident:
+        resident.discard("CLAUDE.md")
+    out = [p for p in RESIDENT if p in resident]
     for pattern in LAZY_GLOBS:
         out.extend(sorted(str(p.relative_to(root)) for p in root.glob(pattern) if p.is_file()))
     return out
@@ -136,11 +140,14 @@ def measure(root: Path) -> Report:
 # 等于没有。故这里只查精简动作真正会产出的那几种指针形态，其余一律记为「未覆盖」。
 
 _CODE_SPAN = re.compile(r"`([^`\n]+)`")
-# ~/.claude/<X>/ 与 ~/.codex/<X>/ 是本仓同名目录的软链投影，须归一回仓库内路径
-_HOME_SUBDIRS = ("skills", "hooks", "scripts", "templates", "playbooks")
+# 共享资源及两端兼容入口是本仓的软链投影，须归一回仓库内路径
+_HOME_SUBDIRS = ("skills", "hooks", "scripts", "templates", "playbooks", "agents")
 # 可判定的指针形态 —— 与精简产出的指针一一对应
 _CHECKABLE = (
     "GLOBAL_AGENTS.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "agents/*.md",
     "playbooks/*.md",
     "skills/*/SKILL.md",
     "skills/*/references/*.md",
@@ -163,7 +170,8 @@ def _normalize_ref(raw: str) -> str | None:
     if any(c in ref for c in "*<>?{}|") or "..." in ref:
         return None                                    # glob 与占位符是模式不是路径
 
-    for home in ("~/.claude/", "~/.codex/", "$HOME/.claude/", "$HOME/.codex/"):
+    for home in ("~/.coding-agent/", "$HOME/.coding-agent/",
+                 "~/.claude/", "~/.codex/", "$HOME/.claude/", "$HOME/.codex/"):
         if ref.startswith(home):
             rest = ref[len(home):]
             if rest in ("CLAUDE.md", "AGENTS.md"):
@@ -241,8 +249,11 @@ def file_at_ref(root: Path, ref: str, rel: str) -> str | None:
 def _paths_at_ref(root: Path, ref: str) -> list[str]:
     """该 ref 下属于指令面的文件。与 `instruction_paths` 共用同一套 glob，保证口径一致。"""
     tracked = _git(root, "ls-tree", "-r", "--name-only", ref).splitlines()
+    resident = set(RESIDENT)
+    if "AGENTS.md" in tracked:
+        resident.discard("CLAUDE.md")
     return [p for p in tracked
-            if p in RESIDENT or any(_glob_match(p, g) for g in LAZY_GLOBS)]
+            if p in resident or any(_glob_match(p, g) for g in LAZY_GLOBS)]
 
 
 @dataclass

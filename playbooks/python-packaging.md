@@ -1,6 +1,6 @@
 # Python 打包 · 发布 · 安装规则
 
-> 本文档由 `claude-code-global` 仓库的 `playbooks/python-packaging.md` 提供，经 `install.sh` 双轨软链到 `~/.claude/playbooks/python-packaging.md`（CC 端）与 `~/.codex/playbooks/python-packaging.md`（Codex 端）。修改请回到 `claude-code-global` 仓库，不要直接编辑软链目标。
+> 本文档由 `coding-agent-config` 仓库的 `playbooks/python-packaging.md` 提供，经 `install.sh` 共享软链到 `~/.coding-agent/playbooks/python-packaging.md`。修改请回到 `coding-agent-config` 仓库，不要直接编辑软链目标。
 >
 > **触发条件**：Coding Agent 在本轮任务涉及把 Python 库 / 应用做成 wheel、发布到 registry（PyPI / 自托管 GitLab）、或安装到目标机（`pip install --target` / `uv tool install`）时，**必须先把本文件读入上下文**，再开始动手。日常写 Python 代码只读 `playbooks/python.md` 即可。
 

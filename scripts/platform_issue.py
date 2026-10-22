@@ -291,7 +291,7 @@ def build_issue_create_cmd(platform, title, body_file, body, labels, repo):
     """Build the gh/glab issue-create argv (pure, no execution).
 
     `repo` (owner/name slug) targets a cross-repo issue — e.g. filing a
-    distillation issue to claude-code-global from inside another project.
+    distillation issue to coding-agent-config from inside another project.
     GitHub reads the body from --body-file; GitLab takes it inline via
     --description (so callers pass both body_file path and body text).
     """
@@ -318,7 +318,7 @@ def build_issue_create_cmd(platform, title, body_file, body, labels, repo):
 def cross_repo_label_guard_error(repo, labels, allow_no_label):
     """Guard cross-repo issue creation against being filed with zero labels.
 
-    Distillation issues filed into claude-code-global from another project
+    Distillation issues filed into coding-agent-config from another project
     (`--repo` set) must carry classifying labels — a label-less cross-repo
     issue (e.g. a历史 #12 filed ad-hoc outside `/finish`) can't be triaged.
     Returns an error string when creation should be blocked, else None.

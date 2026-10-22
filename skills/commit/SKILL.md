@@ -1,10 +1,9 @@
 ---
 name: commit
 description: 按照 git 规则自动分析变更并提交代码
-disable-model-invocation: false
 ---
 
-用户调用此 skill 表示要提交当前的代码变更。按照全局 CLAUDE.md 中的 git 规则执行以下步骤：
+用户调用此 skill 表示要提交当前的代码变更。按照全局 AGENTS.md 中的 git 规则执行以下步骤：
 
 1. 运行 `git status` 查看当前变更状态
 2. 运行 `git diff` 查看具体变更内容（包括已暂存和未暂存的）
@@ -23,7 +22,7 @@ disable-model-invocation: false
      - 强制提交：用户明示后才用 `--no-verify` 等方式绕过
    - **不要静默修复**：lint 跑出来的错都得显式让用户知道再决策
 6. **探测轮次 N**（决定是否加 `[round N]` 前缀，给跨轮追溯补一层约束）：
-   - **主信号**：当前分支名匹配 `^round(\d+)(-|$)` → 取第一个捕获组为 N（`/start` 默认 worktree 模式的分支命名 `round<N>-<英文短描述>`；裸 `round<N>` 与历史的中文后缀一并命中）。
+   - **主信号**：当前分支名匹配 `^(?:codex/)?round(\d+)(-|$)` → 取第一个捕获组为 N（`/start` 默认 worktree 模式的分支命名 `codex/round<N>-<英文短描述>`；裸 `round<N>` 与历史的中文后缀一并命中）。
    - **兜底**（`--no-worktree` 等非 round 分支）：看本次变更涉及的文件里有没有 `docs/<N>-*/` 路径（`git diff --cached --name-only` 与 `git status --porcelain` 的并集），命中唯一的 `<N>` 则取之。
    - 两路都判不出 N → **不加前缀**，走普通 commit，不要硬凑。
 7. 分析所有变更，生成 commit message：
@@ -34,7 +33,7 @@ disable-model-invocation: false
    - **若第 4 步 `/review-loop` 走了降级路径**（Step 5 的第 ② 或 ③ 档）：在 message body 追加一行标注，**照抄该档在 Step 5 里的措辞**（② 写「独立 context 未失、`effort` 未钉死」；③ 写「未经独立 context 把关」——**别把 ② 记成 ③**），**并附降级证据**（那次调用失败的实际表现 / 工具确实不在列表）——只写结论不算数，写不出证据说明本就不该降级
    - 简明扼要，聚焦于「为什么」而非「改了什么」
 8. 将相关文件添加到暂存区（优先按文件名添加，避免 `git add -A`）
-9. 执行提交，commit message 末尾必须**按当前执行的 Agent** 追加正确的 `Co-authored-by` trailer（详见全局 CLAUDE.md「git 规则」）：
+9. 执行提交，commit message 末尾必须**按当前执行的 Agent** 追加正确的 `Co-authored-by` trailer（详见全局 AGENTS.md「git 规则」）：
    - CC（Claude Code）执行 → `Co-authored-by: Claude <noreply@anthropic.com>`
    - Codex（OpenAI Codex）执行 → `Co-authored-by: OpenAI Codex <noreply@openai.com>`
    - **判据**：你知道自己是哪个 Agent，据此选身份；**Codex 绝不写 Claude 身份，CC 绝不写 Codex 身份**。

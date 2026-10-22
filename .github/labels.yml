@@ -1,4 +1,4 @@
-# claude-code-global 的 GitHub Issues 三轴 label 集合。
+# coding-agent-config 的 GitHub Issues 三轴 label 集合。
 # 由 bootstrap / sync-project-config 通过 `gh label create --force` 同步到 GitHub。
 #
 # 颜色参考：红 B60205 / 橙 D93F0B / 黄 FBCA04 / 绿 0E8A16 / 蓝 1D76DB / 紫 5319E7 / 灰 BFD4F2
@@ -34,7 +34,7 @@
   color: "FBCA04"
   description: "一般小功能 / 偶发问题 / 触发面窄"
 
-# ---------- area ----------（claude-code-global 的实际模块）
+# ---------- area ----------（coding-agent-config 的实际模块）
 - name: "area:install"
   color: "C5DEF5"
   description: "install.sh / settings 合并 / 软链管理"

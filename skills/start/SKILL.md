@@ -1,12 +1,11 @@
 ---
 name: start
 description: 开始一个新的开发项：创建文档目录，撰写 PROMPT.md 和 PLAN.md，确认后再开始写代码
-disable-model-invocation: false
 ---
 
 用户调用此 skill 表示要开始一个新的开发项。
 
-**前置检查**：若 `CLAUDE.md` 与 `docs/DEVTREE.md` 都不存在，停下来提示用户先运行 `/bootstrap`，**不要**自己兜底建项目骨架。`/start` 只负责开新一轮开发，不负责项目首次初始化。
+**前置检查**：若 `AGENTS.md`、`CLAUDE.md` 与 `docs/DEVTREE.md` 都不存在，停下来提示用户先运行 `/bootstrap`，**不要**自己兜底建项目骨架。`/start` 只负责开新一轮开发，不负责项目首次初始化。
 
 **参数处理**：调用时可能附带参数（args），参数有两种形态：
 
@@ -21,7 +20,7 @@ disable-model-invocation: false
 
 **`--no-worktree` 开关**：args 中可附带 `--no-worktree`（与 issue# ／自由描述正交，可与二者同时出现）。默认每轮在独立 git worktree 内开发；带此开关则跳过 worktree 创建、在当前分支直接干。解析需求内容前先把 `--no-worktree` 从 args 中剔除。适用场景：轻量改动 / 探索性 round / 不值得单开 worktree 的小修复。
 
-按照全局 CLAUDE.md 中的开发模式，严格遵循「执行前必须先完成 PROMPT.md 和 PLAN.md 的撰写并确认，再开始写代码」：
+按照全局 AGENTS.md 中的开发模式，严格遵循「执行前必须先完成 PROMPT.md 和 PLAN.md 的撰写并确认，再开始写代码」：
 
 ### 通用流程
 
@@ -36,13 +35,13 @@ disable-model-invocation: false
    4. **远端已合入的 docs**：`git ls-tree --name-only origin/<主分支> docs/` 解析出的 N —— 覆盖别的设备已经做完并合入的轮次。
    5. **远端在途分支**：`git branch -r --list 'origin/round*'` 解析出的 N —— ② 的远端对应物（② 只看得见本机分支），与 ④ 同吃第 1 步那次 fetch，零额外成本。
 
-   五源并集取 max + 1。**解析失败一律跳过该条、不报错**——非 `round<N>` 规范的分支（如自由描述分支、`feat/xxx`）、worktree 路径不可达等都跳过，不阻断开轮。**fetch 失败时 ④⑤ 整体缺席**，按本地三源算并明确提示（见 `references/remote-align.md` 的降级表）。
+   五源并集取 max + 1；五源都没有已占用编号时从 **0** 开始（等价于空集最大值按 -1 计）。**解析失败一律跳过该条、不报错**——非 `round<N>` 规范的分支（如自由描述分支、`feat/xxx`）、worktree 路径不可达等都跳过，不阻断开轮。**fetch 失败时 ④⑤ 整体缺席**，按本地三源算并明确提示（见 `references/remote-align.md` 的降级表）。
 
 3. **确定本轮中文描述**：issue 驱动 → 复用第 1 步已拉到的 issue 详情，从 issue 标题提炼简短中文描述；自由描述 → 从描述文字提炼。
 4. **创建 worktree**（默认；带 `--no-worktree` 时跳过本步）—— **读 `references/worktree-create.md`** 按其执行（探测主分支 / 防嵌套 / 忽略 worktree 目录 / 撞号复核 / 创建 / 进入 / 告知 / 缺失的 gitignored 依赖怎么补）。两条硬约束先记住：分支名与 worktree 目录名统一为 `round<N>-<英文短描述>` 且**整串纯 ASCII**；**建之前必须复核这个 N 没被本地或远端占走**，占了就重算 N，别靠换个描述词绕开。
 5. 在 `docs/` 下创建开发项文件夹 `docs/<N>-<中文描述>/`（worktree 模式下落在新 worktree 内）。
 6. 基于参数撰写 `PROMPT.md`（两个分支具体行为见下）。
-7. 进入计划模式，撰写 `PLAN.md` 并请用户确认 —— 见下方「PLAN 撰写：外部行为断言先实证」小节。
+7. 撰写 `PLAN.md` 并请用户确认（CC 可进入计划模式；Codex 直接写计划并在对话中等待确认，无需模式切换工具） —— 见下方「PLAN 撰写：外部行为断言先实证」小节。
 8. 用户确认后再开始写代码。
 
 #### PLAN 撰写：外部行为断言先实证（通用流程第 7 步展开）
@@ -60,7 +59,7 @@ disable-model-invocation: false
 1. **拉 issue 详情**（**与通用流程第 1 步「远端对齐」是同一次调用，不要调两遍**）：调 helper（自动按 `git remote get-url origin` 走 GitHub 或 GitLab）：
 
    ```bash
-   python3 $HOME/.claude/scripts/platform_issue.py issue-view <N>
+   python3 $HOME/.coding-agent/scripts/platform_issue.py issue-view <N>
    ```
 
    如参数是完整 URL，先从中提取 N。**本轮若需要往该 issue 补材料（spike 结论、实测数据），走 `issue-comment --issue <N> --body-file <F>`，别直调 `gh issue comment`。**

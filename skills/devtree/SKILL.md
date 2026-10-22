@@ -1,7 +1,6 @@
 ---
 name: devtree
 description: 依据 docs/DEVTREE.md 中作者维护的 Epic 结构，重新生成可视化图表和节点索引
-disable-model-invocation: false
 ---
 
 用户调用此 skill 表示要刷新「可视化」和「节点索引」两个区块（含同步本轮开发项的 Epic 归属）。
@@ -91,7 +90,7 @@ disable-model-invocation: false
   - 「节点索引」区块：同上占位
   - 「Epic 结构」区块：写入说明性占位，引导作者维护，例如：
     ```
-    （此区块由作者维护。在此用 Markdown 标题层级定义目标树。叶 Epic 包含「状态」（已完成 / 进行中 / 已放弃）与「轮次」（逗号分隔的开发项编号列表）字段；非叶 Epic 仅作为分组节点。完整规范见 ~/.claude/skills/devtree/SKILL.md。）
+    （此区块由作者维护。在此用 Markdown 标题层级定义目标树。叶 Epic 包含「状态」（已完成 / 进行中 / 已放弃）与「轮次」（逗号分隔的开发项编号列表）字段；非叶 Epic 仅作为分组节点。完整规范见 ~/.coding-agent/skills/devtree/SKILL.md。）
     ```
 - 写完即返回，**不**继续执行后续步骤
 

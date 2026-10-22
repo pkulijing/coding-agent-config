@@ -1,7 +1,6 @@
 ---
 name: pybump
 description: 升级 Python 项目版本号，更新 pyproject.toml，提交代码并打 tag
-disable-model-invocation: false
 ---
 
 用户调用此 skill 表示要发布 Python 项目的新版本。
@@ -84,7 +83,7 @@ v.release              # (0, 6, 0)
 
 ## 4. 更新版本号
 
-使用 Edit 工具将 `pyproject.toml` 中的 `version = "旧版本号"` 替换为 `version = "新版本号"`。
+使用当前平台的文件编辑工具将 `pyproject.toml` 中的 `version = "旧版本号"` 替换为 `version = "新版本号"`。
 
 ## 5. 同步依赖
 

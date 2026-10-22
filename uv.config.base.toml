@@ -1,4 +1,4 @@
-# claude-code-global 推荐的系统级 uv 配置基线。
+# coding-agent-config 推荐的系统级 uv 配置基线。
 # 由 install.sh 以 user-wins 语义 seed 到 ~/.config/uv/uv.toml（缺失才创建，绝不覆盖）。
 # 注意 uv.toml 的 key 不带 tool.uv 前缀（顶层 python-preference + [[index]]），
 # 与 pyproject 里的 [tool.uv] / [[tool.uv.index]] 写法不同。

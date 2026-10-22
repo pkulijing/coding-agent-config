@@ -1,5 +1,5 @@
 [Unit]
-Description=Claude Code Global config auto-update
+Description=Coding Agent Config config auto-update
 
 [Service]
 Type=oneshot

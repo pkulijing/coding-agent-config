@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/hooks/fix-after-edit.sh # @claude-code-global:fix-after-edit",
+            "command": "bash $HOME/.coding-agent/hooks/fix-after-edit.sh # @coding-agent-config:fix-after-edit",
             "timeout": 30
           }
         ]
@@ -17,7 +17,7 @@
     "allow": [
       "Skill(*)",
 
-      "Read(~/.claude/**)",
+      "Read(~/.coding-agent/**)",
 
       "Bash(git status:*)",
       "Bash(git diff:*)",

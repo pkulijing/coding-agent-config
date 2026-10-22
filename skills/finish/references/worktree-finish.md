@@ -4,11 +4,13 @@
 
 收尾流程遵循 `/rebase` 的核心原则（FF-only、备份 tag、冲突逐文件解、abort 兜底、分段确认），但**不调用 `/rebase`** —— 它阶段 3 的 `git checkout <主分支>` 在 worktree 下必失败（主分支已被主工作树占用），FF merge 必须改用 `git -C <主工作树> merge`。
 
+普通 `.worktrees/` 中的工作树按下述 Git 流程处理；若检测到 Codex 托管工作树，先识别其附件与生命周期，清理必须使用应用的 archive 能力，不能直接删托管 checkout。
+
 ## 8.1 诊断
 
 展示 `git worktree list`、`git branch --show-current`、`git status`（应干净，`/commit` 刚跑完）、`git log --graph --oneline -15`。
 
-- **探测主分支**：`git symbolic-ref --short refs/remotes/origin/HEAD`（得 `origin/master` → 取末段）；失败则本地探测 `main` / `master`。
+- **探测主分支**：`git symbolic-ref --short refs/remotes/origin/HEAD`（仅剥掉 `origin/` 前缀，保留主分支自身可能含有的 `/`）；失败则本地探测 `main` / `master`。
 - **算主工作树路径**：`dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`
 
 **前置检查**：当前分支不能就是主分支；工作区必须干净。任一不满足 → 停下问用户。
@@ -38,12 +40,12 @@ git -C <主工作树> merge --ff-only <当前分支>
 
 向用户**明确列出**将删除的项，等用户确认（销毁性动作）。`--keep-backup` 时 backup tag 不在删除列表里。列表须点明 **worktree 内未提交 / untracked 的产物（调试脚本、样例文件等）会一并丢失**。
 
-**用户确认** → 先 `cd <主工作树>`（当前 cwd 即将随 worktree 一起消失），再依次：
+**用户确认** → 先将后续调用的 `workdir` 显式设置为主工作树（当前工作树即将删除，不能依赖一次 `cd`），再依次：
 
 ```bash
-git worktree remove <当前 worktree 路径>
-git branch -d <当前分支>
-git tag -d backup/<分支名>-<时间戳>   # --keep-backup 时跳过，末尾打印保留的 tag 名
+git -C <主工作树> worktree remove <当前 worktree 路径>
+git -C <主工作树> branch -d <当前分支>
+git -C <主工作树> tag -d backup/<分支名>-<时间戳>   # --keep-backup 时跳过，末尾打印保留的 tag 名
 ```
 
 `git worktree remove` 失败（IDE / 编辑器占用 worktree 内文件）→ 提示「请关闭打开该目录的编辑器后重试」，**不加 `--force` 硬删**，保留全部状态。
@@ -54,7 +56,7 @@ git tag -d backup/<分支名>-<时间戳>   # --keep-backup 时跳过，末尾�
 
 不 merge，**但照删 worktree** —— 保留的是「分支不合入主干」，不是「代码留在 worktree 里」：留着它主工作树就切不到该分支（`fatal: '<分支>' is already used by worktree at <路径>`），而跨仓联调的路径引用与脚本入口都指向主工作树。分支与 backup tag 全留。
 
-**删除项只有 worktree 一项，其余纪律同 8.4**：二次确认 + 将删除项列表、先 `cd <主工作树>`、`remove` 失败提示关编辑器重试且**不加 `--force`**、用户拒绝则原样保留。额外一条：**`remove` 失败时必须把「worktree 未删」打印出来**，不得静默按已删继续 —— 否则下面引导的 `git switch` 会切不动。
+**删除项只有 worktree 一项，其余纪律同 8.4**：二次确认 + 将删除项列表、显式将 `workdir` 设置为主工作树、`remove` 失败提示关编辑器重试且**不加 `--force`**、用户拒绝则原样保留。额外一条：**`remove` 失败时必须把「worktree 未删」打印出来**，不得静默按已删继续 —— 否则下面引导的 `git switch` 会切不动。
 
 删成功后打印：
 

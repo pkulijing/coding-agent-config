@@ -1,7 +1,6 @@
 ---
 name: design
-description: 讨论式方案设计：需求本身还模糊、要在多轮对话里逐步收敛出框架级方案时使用。落 docs/design/<主题>/ 下的 DISCUSSION.md（讨论记录）与 DESIGN.md（方案本身），不写代码、不开 worktree、不拆 issue。支持 --resume 跨会话续聊
-disable-model-invocation: false
+description: 讨论式方案设计：需求本身还模糊、要在多轮对话里逐步收敛出框架级方案时使用。落 docs/design/主题/ 下的 DISCUSSION.md（讨论记录）与 DESIGN.md（方案本身），不写代码、不开 worktree、不拆 issue。支持 --resume 跨会话续聊
 ---
 
 用户调用此 skill 表示手上有一段**还不清晰的背景**，想和你在讨论中逐步收敛出一个方案。**方案本身就是这一轮的最终产出** —— 它可能很宏观、未必落到可执行计划，以后可能拆成很多轮 `/start` 去做，也可能不做。
@@ -14,7 +13,7 @@ disable-model-invocation: false
 | `/start` → `/finish` | 需求明确，要开发 | `docs/<N>-*/` 三件套 + 代码 |
 | `/quick` | 小改，一句话说得清 | 仅 commit |
 
-**明确不做**：不开 worktree、不进 plan mode（plan mode 退出即进入执行，与本形态语义冲突）、不改任何代码、不拆 issue、不碰 `docs/DEVTREE.md`、不写 `SUMMARY.md`。在当前分支进行。
+**明确不做**：不开 worktree、不启动开发执行计划模式（CC 的原生计划工具不用于本形态；Codex 按讨论记录推进，无需切换模式）、不改任何代码、不拆 issue、不碰 `docs/DEVTREE.md`、不写 `SUMMARY.md`。在当前分支进行。
 
 ## 参数
 
