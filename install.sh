@@ -15,8 +15,8 @@ success() { echo -e "${GREEN}[OK]${NC}   $*"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 
 # 由本仓库管理的 hook 条目，command 末尾必须带这条 bash 注释作为身份标记。
-# 完整格式（严格匹配）：# @claude-code-global:<hook-name>
-# 例如：bash $HOME/.claude/hooks/fix-after-edit.sh # @claude-code-global:fix-after-edit
+# 完整格式（严格匹配）：# @coding-agent-config:<hook-name>（兼容旧项目标记）
+# 例如：bash $HOME/.coding-agent/hooks/fix-after-edit.sh # @coding-agent-config:fix-after-edit
 #
 # 模型：把 settings.json 里所有带此标记的 hook 条目看作"由本仓库管理的 hook 集合"，
 # 用 hook-name 唯一标识。每次 install 做集合差分：
@@ -414,12 +414,97 @@ seed_codex_doc_budget() {
     mv "$tmp" "$dst"
 }
 
+# 旧 JSON 与 inline TOML 会叠加加载；仅清理可确认属于本仓的旧定义。
+# 无标记的旧 TOML 只认历史基线的完整字段集合，其他用户表原样保留。
+migrate_legacy_codex_hooks() {
+    local agent_home="$1" dst tmp ts
+    dst="$agent_home/hooks.json"
+    if [ -f "$dst" ]; then
+        if ! command -v jq >/dev/null 2>&1; then
+            echo "[ERROR] 迁移旧 hooks.json 需要 jq，请安装后重试" >&2
+            return 1
+        fi
+        tmp="$(mktemp)"
+        if ! jq '
+            if .hooks.PostToolUse then
+                .hooks.PostToolUse |= (
+                    map(. as $old | .hooks |= map(select(((.command // "") |
+                        test("# *@(claude-code-global|coding-agent-config):fix-after-edit([[:space:]]|$)")) | not))
+                        | if (.hooks | length) == 0 and ($old.hooks | length) > 0 then empty else . end)
+                )
+            else . end
+        ' "$dst" > "$tmp"; then
+            rm -f "$tmp"
+            return 1
+        fi
+        if [ "$(jq -c . "$dst")" != "$(jq -c . "$tmp")" ]; then
+            ts="$(date +%Y%m%d-%H%M%S)"
+            cp "$dst" "${dst}.bak.${ts}"
+            cat "$tmp" > "$dst"
+            success "已迁移旧 hooks.json 中的本仓 hook（备份：hooks.json.bak.${ts}）"
+        fi
+        rm -f "$tmp"
+    fi
+
+    dst="$agent_home/config.toml"
+    [ -f "$dst" ] || return 0
+    tmp="$(mktemp)"
+    awk -v home="$HOME" -v agent="$agent_home" '
+        function flush() {
+            if (!(group && matcher == 1 && command == 1 && timeout == 1 && !other)) printf "%s", block
+            block = ""; group = 0; matcher = 0; command = 0; timeout = 0; other = 0
+        }
+        /^# >>> (claude-code-global|coding-agent-config) managed >>>$/ {
+            flush(); managed = 1; print; next
+        }
+        managed {
+            print
+            if ($0 ~ /^# <<< (claude-code-global|coding-agent-config) managed <<<$/) managed = 0
+            next
+        }
+        /^[[:space:]]*\[/ {
+            # 子表仍属于当前 group；含自定义子表的旧父表不能单独删除。
+            if ($0 ~ /^[[:space:]]*\[\[?hooks\.PostToolUse\./) other = 1
+            flush()
+            if ($0 ~ /^\[\[hooks\.PostToolUse\]\][[:space:]]*$/) {
+                group = 1; block = $0 "\n"; next
+            }
+        }
+        group {
+            block = block $0 "\n"
+            line = $0
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
+            if (line == "" || line ~ /^#/) next
+            if (line ~ /^matcher[[:space:]]*=[[:space:]]*"Edit\|MultiEdit\|Write"$/) matcher++
+            else if (line ~ /^timeout[[:space:]]*=[[:space:]]*30$/) timeout++
+            else {
+                sub(/^command[[:space:]]*=[[:space:]]*/, "", line)
+                if (line == "\"bash $HOME/.codex/hooks/fix-after-edit.sh\"" ||
+                    line == "\"bash " home "/.codex/hooks/fix-after-edit.sh\"" ||
+                    line == "\"bash " agent "/hooks/fix-after-edit.sh\"") command++
+                else other = 1
+            }
+            next
+        }
+        { print }
+        END { flush() }
+    ' "$dst" > "$tmp"
+    if ! cmp -s "$dst" "$tmp"; then
+        ts="$(date +%Y%m%d-%H%M%S)"
+        cp "$dst" "${dst}.bak.${ts}.legacy-hooks"
+        cat "$tmp" > "$dst"
+        success "已清理 config.toml 中的旧式本仓 hook（已备份）"
+    fi
+    rm -f "$tmp"
+}
+
 deploy_codex() {
     local agent_home="${CODEX_HOME:-$HOME/.codex}"
     mkdir -p "$agent_home"
     link_item "$REPO_DIR/GLOBAL_AGENTS.md" "$agent_home/AGENTS.md"
     deploy_skills "$HOME/.agents/skills" "$agent_home/skills"
     unlink_legacy_dir "$agent_home/rules"
+    migrate_legacy_codex_hooks "$agent_home"
     merge_toml "$REPO_DIR/codex.config.base.toml" "$agent_home/config.toml"
     seed_codex_doc_budget "$agent_home/config.toml"
 }

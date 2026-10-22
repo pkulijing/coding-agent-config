@@ -1,5 +1,6 @@
 """安装迁移沙盘：全部 HOME、Git 配置与调度器副作用隔离。"""
 import os
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -46,6 +47,115 @@ class InstallMigrationTest(unittest.TestCase):
         handler = config['hooks']['PostToolUse'][0]['hooks'][0]
         self.assertEqual(handler['type'], 'command')
         self.assertIn('.coding-agent/hooks/', handler['command'])
+        self.assertIn('# @coding-agent-config:fix-after-edit', handler['command'])
+
+    def test_remove_legacy_json_hooks_preserve_custom_handlers(self):
+        for marker in ('claude-code-global', 'coding-agent-config'):
+            with self.subTest(marker=marker):
+                agent = self.home / 'custom-codex'
+                agent.mkdir(exist_ok=True)
+                self.env['CODEX_HOME'] = str(agent)
+                dst = agent / 'hooks.json'
+                custom = {'type': 'command', 'command': 'echo custom'}
+                group = {'matcher': 'Edit|MultiEdit|Write', 'hooks': [
+                    {'type': 'command', 'command': f'bash old # @{marker}:fix-after-edit'},
+                    custom]}
+                original = {'description': 'keep', 'hooks': {'PostToolUse': [group]}}
+                dst.write_text(json.dumps(original))
+                self.install()
+                result = json.loads(dst.read_text())
+                self.assertEqual(result, {'description': 'keep', 'hooks': {
+                    'PostToolUse': [{'matcher': group['matcher'], 'hooks': [custom]}]}})
+                backups = list(agent.glob('hooks.json.bak.*'))
+                self.assertTrue(backups)
+                self.assertTrue(any(json.loads(p.read_text()) == original for p in backups))
+                before = dst.read_bytes()
+                self.install()
+                self.assertEqual(before, dst.read_bytes())
+                self.assertEqual(backups, list(agent.glob('hooks.json.bak.*')))
+
+    def test_remove_old_flat_toml_hook_without_losing_user_tables(self):
+        dst = self.home / '.codex/config.toml'
+        dst.parent.mkdir()
+        dst.write_text('model = "user-model"\n'
+                       '[[hooks.PostToolUse]]\nmatcher = "Edit|MultiEdit|Write"\n'
+                       'command = "bash $HOME/.codex/hooks/fix-after-edit.sh"\ntimeout = 30\n'
+                       '[desktop]\nfollowUpQueueMode = "steer"\n'
+                       '[[hooks.PostToolUse]]\nmatcher = "Bash"\n'
+                       '[[hooks.PostToolUse.hooks]]\ntype = "command"\ncommand = "echo custom"\n')
+        self.install()
+        parsed = tomllib.loads(dst.read_text())
+        self.assertEqual(parsed['model'], 'user-model')
+        self.assertEqual(parsed['desktop']['followUpQueueMode'], 'steer')
+        groups = parsed['hooks']['PostToolUse']
+        self.assertEqual(len(groups), 2)
+        self.assertEqual(groups[0]['hooks'][0]['command'], 'echo custom')
+        self.assertEqual(groups[1]['matcher'], '^apply_patch$')
+        before = dst.read_bytes()
+        self.install()
+        self.assertEqual(before, dst.read_bytes())
+
+    def test_json_only_managed_group_removed_other_events_and_empty_groups_kept(self):
+        dst = self.home / '.codex/hooks.json'
+        dst.parent.mkdir()
+        custom = {'matcher': 'Bash', 'hooks': []}
+        other = [{'hooks': [{'type': 'command', 'command': 'echo stop'}]}]
+        dst.write_text(json.dumps({'hooks': {'Stop': other, 'PostToolUse': [custom, {
+            'matcher': 'Edit|MultiEdit|Write', 'hooks': [{
+                'type': 'command', 'command': 'bash old # @claude-code-global:fix-after-edit'}]}]}}))
+        self.install()
+        self.assertEqual(json.loads(dst.read_text()), {
+            'hooks': {'Stop': other, 'PostToolUse': [custom]}})
+
+    def test_unmarked_user_json_hook_and_custom_flat_toml_preserved(self):
+        agent = self.home / '.codex'
+        agent.mkdir()
+        custom = {'hooks': {'PostToolUse': [{'matcher': 'Edit|MultiEdit|Write', 'hooks': [
+            {'type': 'command', 'command': 'bash $HOME/.codex/hooks/fix-after-edit.sh'}]}]}}
+        dst = agent / 'hooks.json'
+        dst.write_text(json.dumps(custom))
+        (agent / 'config.toml').write_text(
+            '[[hooks.PostToolUse]]\nmatcher = "Edit|MultiEdit|Write"\n'
+            'command = "bash $HOME/.codex/hooks/fix-after-edit.sh"\ntimeout = 60\n')
+        self.install()
+        self.assertEqual(json.loads(dst.read_text()), custom)
+        groups = tomllib.loads((agent / 'config.toml').read_text())['hooks']['PostToolUse']
+        self.assertEqual(groups[0]['timeout'], 60)
+        self.assertEqual(len(groups), 2)
+
+    def test_malformed_legacy_json_aborts_without_overwriting(self):
+        dst = self.home / '.codex/hooks.json'
+        dst.parent.mkdir()
+        dst.write_text('{ broken')
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.install()
+        self.assertEqual(dst.read_text(), '{ broken')
+
+    def test_old_flat_hook_inside_managed_markers_keeps_following_user_table(self):
+        dst = self.home / '.codex/config.toml'
+        dst.parent.mkdir()
+        dst.write_text('model = "user-model"\n# >>> claude-code-global managed >>>\n'
+                       '[[hooks.PostToolUse]]\nmatcher = "Edit|MultiEdit|Write"\n'
+                       'command = "bash $HOME/.codex/hooks/fix-after-edit.sh"\ntimeout = 30\n'
+                       '# <<< claude-code-global managed <<<\n'
+                       '[desktop]\nfollowUpQueueMode = "steer"\n')
+        self.install()
+        parsed = tomllib.loads(dst.read_text())
+        self.assertEqual(parsed['desktop']['followUpQueueMode'], 'steer')
+        self.assertEqual(len(parsed['hooks']['PostToolUse']), 1)
+
+    def test_legacy_flat_group_with_custom_child_table_is_preserved(self):
+        dst = self.home / '.codex/config.toml'
+        dst.parent.mkdir()
+        original = ('[[hooks.PostToolUse]]\nmatcher = "Edit|MultiEdit|Write"\n'
+                    'command = "bash $HOME/.codex/hooks/fix-after-edit.sh"\ntimeout = 30\n'
+                    '[[hooks.PostToolUse.hooks]]\ntype = "command"\ncommand = "echo custom"\n')
+        expected = tomllib.loads(original)['hooks']['PostToolUse'][0]
+        dst.write_text(original)
+        self.install()
+        groups = tomllib.loads(dst.read_text())['hooks']['PostToolUse']
+        self.assertEqual(groups[0], expected)
+        self.assertEqual(len(groups), 2)
 
     def test_custom_codex_home_and_third_party_skill(self):
         self.env['CODEX_HOME'] = str(self.home / 'custom-codex')

@@ -11,6 +11,6 @@ matcher = "^apply_patch$"
 
 [[hooks.PostToolUse.hooks]]
 type = "command"
-command = 'bash "$HOME/.coding-agent/hooks/fix-after-edit.sh"'
+command = 'bash "$HOME/.coding-agent/hooks/fix-after-edit.sh" # @coding-agent-config:fix-after-edit'
 timeout = 30
 # <<< coding-agent-config managed <<<
