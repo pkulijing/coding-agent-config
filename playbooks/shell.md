@@ -331,3 +331,20 @@ result = subprocess.run(
 - 通过真实的探测 / 解析入口断言两种父环境都能识别资源。删掉 locale 覆盖应使中文场景变红；把环境改成只剩 locale 两项应因丢失运行依赖变红。固定 locale 只稳定机器字段，资源名称等用户文本仍可能含中文，fixture 也要保留这类值。
 
 这把「外部命令如何受环境影响」变成了测试输入，避免英文宿主上的固定 fixture 为本地化缺陷背书；对应宪法「环境是被测行为的输入」的要求。
+
+## 12. 非交互 Bash 的后台进程可能忽略 SIGINT，停止协议要显式处理 SIGTERM
+
+**适用场景**：脚本通过 `cmd &`、`nohup cmd > log 2>&1 &` 等方式启动后台长任务，之后靠发信号停止它。
+
+**根因有个限定条件：未启用 job control。** 非交互 Bash 默认属于这种情况，异步命令会忽略 `SIGINT` 和 `SIGQUIT`（见 [Bash Signals 原文](https://www.gnu.org/s/bash/manual/html_node/Signals.html)）。因此不能把终端里 Ctrl+C 能退出，外推为脚本里 `kill -INT <pid>` 也能退出；程序若自行重设处理器，行为又会不同。
+
+**Python 会继承这条差异**：[signal 文档](https://docs.python.org/3/library/signal.html#general-rules) 说明，默认把 `SIGINT` 转成 `KeyboardInterrupt` 的前提是父进程没有改变它。继承了忽略状态时，不能指望 `except KeyboardInterrupt` 或由它触发的 `finally` 收尾。[来源案例 #170](https://github.com/pkulijing/coding-agent-config/issues/170) 中，后台冒烟脚本因此未能停止手上的 GPU 评测；这不是「信号多等一会儿就能送到」。
+
+**停止协议**：
+
+- 通常先向实际工作进程发送 `SIGTERM`（`kill -TERM <pid>`），而不是反复发 `SIGINT`；同时核对进程是否真的退出。`nohup` / `setsid` 不是应用清理协议，不能据此认定后台任务会响应 SIGINT。
+- **SIGTERM 默认终止 Python 进程，不保证执行 `finally`。** 需要优雅收尾时，程序须在主线程通过 `signal.signal(signal.SIGTERM, handler)` 注册处理器，让主循环收到停止标志后退出并进入 `finally`。阻塞等待必须有唤醒 / 超时路径，否则只设标志仍可能一直不退出；不要在处理器里做阻塞清理。
+- 若由 asyncio / uvicorn 等框架管理生命周期，应核实其 SIGTERM 处理与关闭钩子是否覆盖所需清理，避免覆盖框架的处理器。不要仅靠 `KeyboardInterrupt`，也不要随意在处理器中抛异常穿过任意资源操作。
+- 设置有界的退出等待；需要强制终止时可最终发 `SIGKILL`，但它不会执行应用清理。任务还有子进程时，单杀一个 PID 不等于整棵任务已停，进程组 / cgroup 的边界另见 §9；模式匹配清理另见 §10。
+
+**验证要走真实启动路径**：沙盘中用非交互 `bash --noprofile --norc` 并显式 `set +m` 启动后台任务，等任务报告处理器已就绪后再发信号。分别验证继承忽略状态时 SIGINT 不触发退出、默认 SIGTERM 终止但不执行 `finally`、安装 SIGTERM 处理器后能退出且清理副作用确实发生；另以正常前台 Python 的默认 SIGINT 处理器作对照。所有等待设上限，并在失败路径回收沙盘进程，不能只看「kill 返回成功」。
