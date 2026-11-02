@@ -5,6 +5,8 @@ description: 按照 git 规则自动分析变更并提交代码
 
 用户调用此 skill 表示要提交当前的代码变更。按照全局 AGENTS.md 中的 git 规则执行以下步骤：
 
+**design 归档入口**：仅由 `/design` 明确传入主题路径、允许文件清单、归档 SHA（首次为无）及发布/引用核查结论时，先读 `~/.coding-agent/skills/design/references/git-lifecycle.md` §2–§3。执行下方同一套 review 与 lint，但第 8 步只暂存允许文件，并在第 9 步按已验证的首次创建 / 同主题 HEAD amend 选择操作；归档不带 round 前缀，message 保留 `Design-Topic` 和实际执行 Agent 署名。改写前再次核对 HEAD、完整 index、提交全部路径及授权条件；非 HEAD、混合范围、已发布或共享历史没有相应授权就停下保全，不退回新增主题提交。普通 `/commit` 未带上述上下文时仍默认新增提交；若当前为 design 主题分支或变更为已有主题文档，先核对主题归档策略，不能靠直接调用普通入口绕过单提交规则。
+
 1. 运行 `git status` 查看当前变更状态
 2. 运行 `git diff` 查看具体变更内容（包括已暂存和未暂存的）
 3. 运行 `git log --oneline -5` 了解近期 commit 风格
