@@ -274,6 +274,17 @@ def _is_same_file(left: Path, right: Path) -> bool:
 
 **配套的测试写法见 §4**（宪法「测试先行（TDD）」章「环境是被测行为的输入」那条在本场景的落地形态，**理由见宪法、此处不复述**）。
 
+### 3.10 Uvicorn 长连接服务：显式设置优雅退出等待上限
+
+**服务含 WebSocket、SSE 或流式响应时，必须显式设置有限的 `timeout_graceful_shutdown`**，尤其是退出后还要停子进程、落盘或释放设备资源的服务。程序入口可用 `uvicorn.run(app, timeout_graceful_shutdown=3)`；`3` 秒只是示例，应按请求排空需求与部署停止预算选择。
+
+[上游配置](https://github.com/encode/uvicorn/blob/master/uvicorn/config.py) 中该参数默认是 `None`；[退出实现](https://github.com/encode/uvicorn/blob/master/uvicorn/server.py) 会等待连接与任务结束，超时后取消仍在运行的任务，再进入 lifespan shutdown。长连接处理循环若未响应断连、任务未结束，就可能一直停在等待阶段，让外层 `finally` 的收尾迟迟无法执行。
+
+- **超时不等于收尾完成，也不是整个进程的退出时限**：lifespan shutdown、取消后的任务收尾与外层资源清理仍须自行保证有界；处理任务取消时用 `finally` 释放资源，不要吞掉取消继续循环。部署停止预算要为这些步骤留余量，不能只等于上述参数。
+- **验收要保留真实长连接**：建立 WebSocket / SSE / 流式响应并保持打开，通过实际启动路径分别验证 Ctrl-C 与 SIGTERM；记录总退出耗时，确认应用收尾执行、托管子进程已退出。只测没有客户端的空服务，覆盖不到等待卡住的路径。
+
+[来源案例 #171](https://github.com/pkulijing/coding-agent-config/issues/171) 记录：推送型 WebSocket 服务等待后台任务不结束，导致 GPU 子进程收尾无法执行；设置 3 秒等待上限后，该项目实测 4 秒内退出。这是来源项目的结果，不是所有服务的耗时保证。
+
 ## 4. 测试
 
 **TDD 的适用范围与例外以全局宪法「测试先行（TDD）」章为准，此处不复述**；下面是落到 Python 的具体姿势：
