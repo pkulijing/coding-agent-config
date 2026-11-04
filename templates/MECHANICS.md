@@ -28,6 +28,14 @@
 
 **冲突**：不同 stack 的 `__subpath__` 落到各自子树、天然不撞；`__root__` 由各 stack 与 `_common` 共同贡献到根，**不应有同名冲突**（设计约束），万一有则 stack 优先。目标文件已存在一律列入冲突清单逐条问用户（take 模板 / 保留项目侧 / 智能合并），**不默认覆盖**。
 
+### 1.1 `cli-plugin`：共用 skill 的相对链接
+
+`cli-plugin` 的全部资源通过 `__root__/` 落项目根：marketplace 清单、`plugin/`、`plugin_tests/`、`CLI_PLUGIN.md` 与 `.agents/skills/`。其 `default_path: plugin` 为插件子树登记独立 marker path，避免与语言 stack 的根路径 `.` 重复；该值不改变 `__root__/` 的落点。bootstrap / adopt 按 §1 动态发现 stack，无需在 skill 内另写名单。
+
+该 stack 的 `.agents/skills/<name>` 是指向 `../../plugin/skills/<name>` 的**相对软链**。复制时保留链接本身，不解引用复制正文；normal sync 比对与更新链接目标，不能沿链接覆写 skill。已有文件、目录或链接（含断链）均进入冲突清单，不能默认覆盖。目标环境不支持链接则报告并跳过此 stack，不生成伪兼容副本。
+
+落地后按 `CLI_PLUGIN.md` 替换示例 CLI、清单身份与 skill 名，执行随附结构测试与可用的原生校验；不自动安装 CLI、注册市场或修改用户配置。两个平台的业务验收分别执行，不能以目录校验通过代替真实加载。
+
 ## 2. fragment 文件（合并，不直接落地）
 
 凡文件名以 `.fragment` 结尾的都是**片段**，永远不落地为同名文件。去掉 `.fragment` 后缀即得目标相对路径，**目标始终在项目根**。复制流程要先把它们剔除出去，再按类型合并。

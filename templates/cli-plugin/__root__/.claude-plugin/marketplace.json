@@ -1,0 +1,12 @@
+{
+  "name": "example-cli-marketplace",
+  "description": "团队 CLI 的自然语言入口",
+  "owner": { "name": "Example Team" },
+  "plugins": [
+    {
+      "name": "example-cli",
+      "source": "./plugin",
+      "description": "已有 CLI 的自然语言入口"
+    }
+  ]
+}
