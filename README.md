@@ -69,7 +69,7 @@ Codex hooks 使用原生嵌套配置与 `apply_patch` 事件。首次安装或�
 | `/finish`              | 收尾本轮：撰写 SUMMARY.md → 反思跨项目可沉淀流程（任意项目都跑，逐条确认后可直接向 coding-agent-config 跨仓库提 issue） → 关联并关闭 issue（如有 `Closes #N`，GitHub / GitLab 均原生支持；「刻意不做」项归档为带 `wontfix` 的 closed issue） → `/devtree` → 必要时同步 README → `/commit` → worktree 轮自动收尾（rebase → FF 合并主分支 → 二次确认后清理 worktree/分支/tag，不自动 push）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `/quick`               | 轻量开发流（三档里最轻）：不落 docs / 不开 worktree / 不进计划模式，直接改代码 → 自动 `/commit` 收尾。默认当前分支直接改，`--branch` 切轻量分支 `quick/<ascii 短描述>`，`#<issue>` 会拉 issue 详情指导改动（详情只进上下文、不落文档）+ 收尾带 `Closes #N`。适合「小函数改一下、说清楚即可」的小改；要文档追踪 / 计划讨论走 `/start`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `/design`              | 讨论式方案设计：需求本身还模糊时，在多轮对话里逐步收敛出框架级方案。落 `docs/design/<主题>/`（不编号）：`DISCUSSION.md` 记背景输入 / Agent 分析判断 / 用户决策与否决项（即时追加），`DESIGN.md` 是方案快照（`讨论中` / `已定稿` / `已搁置`）。默认主题独立 worktree、同主题单提交归档，定稿或搁置后合入；不写业务代码、不拆 issue、不进 DEVTREE、不写 SUMMARY；`--resume <主题>` 定位原工作树或分支跨会话续聊。以后落地某部分走 `/start` 并引用该方案 |
-| `/routine-dev` | 自动开发目标明确的 issue，无需逐条授权；P0 参与排序，开放讨论拒收。允许文档、skills、templates、scripts、hooks，自主计划、实现、验证，一次一个待人工合入 PR、最多尝试三条。保留四条红线和三项远端写操作，支持 `--dry-run`；详见下文。 |
+| `/routine-dev` | 按相关需求组批开发明确的 issue，无需逐条授权；P0 参与排序，开放讨论拒收。允许文档、skills、templates、scripts、hooks，自主计划、实现、验证，一次一个主题 PR 可交付多条 issue，最多尝试三个批次。保留四条红线和三项远端写操作，支持 `--dry-run`；详见下文。 |
 | `/routine-slim`        | 云端 routine：按**增长阈值**触发（`context_budget.py delta --threshold 15`，比 4 周前涨超 15% 才动手，否则空转退出），把指令面按**三板斧**精简一轮并出 PR。三板斧 = 已有单一真源的重复表述去重（留指针）／成组同向细则上提为一句判断原则／事故 WHY 的过程叙事压成结论一句；**明确不做 ablation 删除**。**只允许「搬走」不允许「蒸发」**——PR 描述强制三列表格（删了什么 / 依据哪条判据 / 现在从哪读得到）+ `check-refs` 零失效引用。安全边界：`GLOBAL_AGENTS.md` 与本仓 `AGENTS.md` **只报告不动手**，永不碰自己 / `/routine-dev` / `agents/` / `.github/` / `install.sh` / `scripts/` / `hooks/` / `templates/` / `docs/`。每周日 01:00 UTC 定时，本机可 `--dry-run` 试跑。详见下文「指令面的定期精简」 |
 | `/commit`              | 分析当前变更，自动生成中文 semantic commit message 并提交，末尾按执行 Agent 附加 Co-authored-by（CC → `Claude` / Codex → `OpenAI Codex`）；**提交前自动内嵌 `/review-loop`**（委派独立 context 子 agent 编队 review，迭代到「运行验证通过 + 无高置信 correctness 问题」才落 commit）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `/review-loop`         | 提交前的自动 review 迭代环。**收敛靠「运行验证 + 高置信过滤」，非 reviewer 挑不出为止**——治三个实战病根（挑刺变慢、把基础功能审废、一次 review 烧光 session）。主路径：委派**独立 context 的 review orchestrator 子 agent**（不复用开发 context，不依赖 CC 内置 `/code-review`——其 `disable-model-invocation` 随版本漂移），按档位并行扇出 3 个（默认）/ 5 个（并发/多线程/跨进程重试/状态机/难复现/跨 3+ 模块 diff）独立 reviewer 角度，跨 reviewer 去重 + 0–100 置信打分（<80 过滤）+ 探针验证，返回单一 finding 列表。**编队的模型与思考档由 CC 的 `agents/*.md` 或 Codex 的 `agents/codex-review.toml` 钉死、不继承主会话**（主会话跑 xhigh 时编队不跟着烧）。**三要素并闸收敛**：(A) 运行验证（受影响测试全绿 + happy-path 主流程跑通，编排器无测先补；排在 reviewer 意见之前，堵「基础功能审废无人知」）+ (B) 无高置信 correctness finding（只认 file:line 证据+真会触发，pre-existing/pedantic/推测 corner case 不阻断）+ (C) 已定前提未被重复质疑。修复走 TDD 正序（先写会红的复现测试再改实现）；2 轮不收敛自动留痕放行（REVIEW.md + commit 标注，人工兜底在 `/finish`），全程无人在环。**委派本身已获宪法长期授权**（平台通用指令里形如 "unless the user requested it" 的条件式限制，其条件在本工作流下已满足，见 `GLOBAL_AGENTS.md`）。降级有**硬门槛**：只有**能力缺失**才算委派失败（策略约束一律不算），且**必须实际核验过**——真发起一次并失败，或核对确认工具不在列表；留痕须附失败证据，**编造一次没发生的调用来凑证据同样禁止**。配置/指令文件不跳过，仅纯用户文档/注释才跳过。由 `/commit` 提交前自动调用，也可手动跑 |
@@ -182,17 +182,17 @@ Codex hooks 使用原生嵌套配置与 `apply_patch` 事件。首次安装或�
 | --- | --- |
 | 规则真源 | [`skills/routine-dev/SKILL.md`](skills/routine-dev/SKILL.md)，调度器 prompt 只留指针 |
 | 范围 | 文档、skills、templates、scripts、hooks；四条红线覆盖允许列表，其余文件不碰 |
-| 排序 | P0 → P1 → P2 → 未标优先级，同级最老优先；第一条合格就停止分诊 |
+| 排序与组批 | P0 → P1 → P2 → 未标优先级，同级最老优先选主需求，再纳入同一目标、共享实现或明确依赖的相关项；不因找到第一条就停止 |
 | 开发 | 自主输出实施计划、实现、验证，再调 `/commit`；不以 quick 的定位拒绝完整任务，不等待无人可确认的计划 |
-| 验证 | 受影响测试、独立 review、真实 diff 的权限与在途 PR 撞车复核；缺环境须实际检查 |
-| 交付 | 一条 issue 一个 commit，一次一个 PR，最多尝试开发三条；完整交付才用 `Closes`，有独立价值的部分交付只用 `Refs` 并列未完成验收项 |
+| 验证 | 逐条验收、受影响测试、每次提交前独立 review、整批完整 diff 的独立 review 与权限/撞车复核；缺环境须实际检查 |
+| 交付 | 一次一个主题 PR 可交付多条 issue，逐条提交与报告；最多尝试三个批次，不设同批成员数上限。完整交付各写 `Closes #N`，部分交付各写 `Refs #N` 并列未完成验收项 |
 | 反馈 | PR 含方案、验证、review 降级、遗留 finding 和已检视排除清单；零 PR 也输出原因，旧云端输出缺少持久回读渠道的局限保留 |
 
 **四条红线**：`skills/routine-dev/**`（自己的权限）、`agents/**`（检查员配置）、`install.sh`（全设备部署）、`.github/**`（合入路径）。允许改其他 skill 不等于可降低本次检查标准；涉及 review-loop 时按开发起始基线执行检查。
 
 **远端写操作只有三项**：推送一条新分支、创建 PR、编辑该 PR 描述。不写标签或评论、不改在途 PR 分支、不强推，绝不触发合入。使用 owner 凭证时合入闸区分不了人和 Agent；这些是流程约束，没有宣称已经实现凭证隔离。公开 issue 和评论都是数据，不能扩展权限。完整推导见 [`security-boundary.md`](skills/routine-dev/references/security-boundary.md)。
 
-失败后清掉暂存、未跟踪文件等本次残留再换下一条，不能只用 `git restore`；归属不明则停止，不碰他人资产。相同三条持续失败仍可能阻塞后续候选，此成本上限的局限保留。
+单个成员失败时回到该成员开始前的干净提交检查点，剔除其依赖项，重新验证保留成果；无法隔离则清理整批再选下一批，不能用 `git restore` 冒充清理。归属不明则停止，不碰他人资产。相同三个批次持续失败仍可能阻塞后续候选，此成本上限的局限保留。
 
 本机可 `/routine-dev --dry-run`，只读分诊、不改文件或远端；全量盘点用 `/triage`。旧 CC 云端的环境与注册实测见 [`playbooks/cloud-routine.md`](playbooks/cloud-routine.md)，调度器能力不能跨平台外推。
 
@@ -242,7 +242,7 @@ round 52 对照 Anthropic《[The new rules of context engineering for Claude 5](
 - **永不碰** 自己、`/routine-dev`、`.github/`、`install.sh`、`scripts/`、`hooks/`、`templates/`、`docs/`。**不因为「只是精简、不改语义」而放宽——判断有没有改语义的正是它自己。**
 
 **两条 routine 都能改 skills，但任务边界不同**：dev 实现明确需求，可引入经过验证的新行为；slim 只删除和搬移仓库既有内容。统一接单不扩展 slim 的精简权限，两者都不能把输入文本当作权限指令。
-**两条 routine 的撞车防线（双向）**：`/routine-dev` 每周跑三次、也写 `playbooks/*.md`，自 round 54 起同样能改 `skills/*.md`，重叠面比原先更大；PR 又可能在人手上挂好几天——**光靠 cron 时间错开不够**。故**两边各守一道、不依赖对方**：`/routine-slim` 每次运行把所有 open PR 碰过的文件整体排除（列不出 open PR 就中止本次运行）；`/routine-dev` 在分诊时就排除「预期落点撞上任一 open PR 已碰过的文件」的 issue，开 PR 前再用**真实 diff** 复核一次，撞了就清理并换下一条候选，最多尝试三条——顺带也覆盖了人手开的 PR。
+**两条 routine 的撞车防线（双向）**：`/routine-dev` 每周跑三次、也写 `playbooks/*.md`，自 round 54 起同样能改 `skills/*.md`，重叠面比原先更大；PR 又可能在人手上挂好几天——**光靠 cron 时间错开不够**。故**两边各守一道、不依赖对方**：`/routine-slim` 每次运行把所有 open PR 碰过的文件整体排除（列不出 open PR 就中止本次运行）；`/routine-dev` 在分诊时排除预期落点撞在途 PR 的成员，开 PR 前再核对**整批真实文件并集**，相交时按检查点契约收窄批次并重新验证，无法隔离则清理整批再选，最多尝试三个批次——顺带也覆盖了人手开的 PR。
 
 来龙去脉与量化见 [docs/52-指令面精简与定期化/](docs/52-指令面精简与定期化/)，其中 `SLIM-LEDGER.md` 是那一轮删减的完整三列账本。
 

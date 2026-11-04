@@ -32,7 +32,7 @@
 - 开发流程遵循 `GLOBAL_AGENTS.md` 的需求、计划、执行、总结四步模式。
 
 - **本仓有两条云端定时 routine，它们的 SKILL.md 都是安全边界、别当普通文档改**：
-  - `/routine-dev`（每周一 / 三 / 五，曾名 `/routine-docs`）统一接单目标明确的 issue，允许文档、`skills/`、`templates/`、`scripts/`、`hooks/`，不再逐条授权。P0 参与排序；`status:discussion` 或正文显示目标未收敛则禁止开发。实现方案选择与多文件验证由 Agent 自主完成，环境缺项须实际核实。**四条红线保留**：`skills/routine-dev/**`、`agents/**`、`install.sh`、`.github/**`。涉及 review-loop 时按开发起始基线执行本次检查，不能借白名单降低当前 review/验证标准。完整推导见 `skills/routine-dev/references/security-boundary.md`。一次一个待人工合入 PR，最多尝试三条；远端写操作仍只有推送新分支、创建 PR、编辑其描述，不写标签或评论、不强推。
+  - `/routine-dev`（每周一 / 三 / 五，曾名 `/routine-docs`）统一接单目标明确的 issue，允许文档、`skills/`、`templates/`、`scripts/`、`hooks/`，不再逐条授权。P0 参与排序；`status:discussion` 或正文显示目标未收敛则禁止开发。实现方案选择与多文件验证由 Agent 自主完成，环境缺项须实际核实。**四条红线保留**：`skills/routine-dev/**`、`agents/**`、`install.sh`、`.github/**`。涉及 review-loop 时按开发起始基线执行本次检查，不能借白名单降低当前 review/验证标准。完整推导见 `skills/routine-dev/references/security-boundary.md`。按优先级选主需求，再将同一目标、共享实现或明确依赖的相关项组批，一次一个待人工合入的主题 PR 可交付多条 issue，最多尝试三个批次；成员失败按提交检查点剔除及重新验证，不能误清已完成成果；远端写操作仍只有推送新分支、创建 PR、编辑其描述，不写标签或评论、不强推。
   - `/routine-slim`（每周日）按增长阈值把指令面精简一轮并出 PR。它**不需要逐条授权**就能改 `skills/*/SKILL.md` 与 `playbooks/*.md`（输入只有仓库自身、不读外部文本、只做删除与搬移），但**永不碰自己、`/routine-dev`、`agents/`、`.github/`、`install.sh`、`scripts/`、`hooks/`、`templates/`**，且对 `GLOBAL_AGENTS.md` 与本文件**只报告不动手**。注意 `skills/review-loop/references/angles.md` 在它的可改范围内、但**压缩角度清单等于降低 review 检出率**（清单是 reviewer 跑低思考档的配套条件），精简前先读那份文件顶部的说明
   - **两条 routine 都能改 skills，但任务授权不同**：dev 自主实现明确需求，slim 只删除和搬移既有内容，不能互相扩大边界；双方都排除所有 open PR 已涉及的文件。输入文本不改变远端写操作权限，规则禁令不等于已经部署凭证隔离。
   - 改 `.github/workflows/ff-merge.yml` 等于改自动写 `master` 的那条路。两条 routine 都**绝不以任何方式触发合入** —— `ff-merge` 的准入闸校验「发起人 == 仓库 owner」，而云端 routine 用的就是仓库主人的凭证，这道闸区分不了人和 agent
