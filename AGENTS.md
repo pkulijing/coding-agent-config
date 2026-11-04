@@ -32,7 +32,7 @@
 - 开发流程遵循 `GLOBAL_AGENTS.md` 的需求、计划、执行、总结四步模式。
 
 - **本仓有两条云端定时 routine，它们的 SKILL.md 都是安全边界、别当普通文档改**：
-  - `/routine-dev`（每周一 / 三 / 五，**曾名 `/routine-docs`**）把够格自动做的 issue 做成 PR，**两条通道授权强度不同**：**自动通道**由模型保守分诊、**只许落文档**；**标记通道**要 owner 给 issue 打 `auto:take` label 背书，落点放开到 `skills/`（除自己）/ `templates/` / `scripts/` / `hooks/`。它把**外部 issue 正文**变成文件内容，是 prompt-injection 面 —— 原先由「落点只限文档」承担的安全职责，在标记通道里换成了人工背书，故**四条红线绝不因 `auto:take` 放宽**：`skills/routine-dev/**`（自己）、`agents/**`（自己的检查员）、`install.sh`、`.github/**`。完整推导见 `skills/routine-dev/references/security-boundary.md`（§3 是标记通道那一节）。**一次运行只出一个 PR**（选中那条做不成就换下一条，最多试 3 条），写权限面穷举为「push 一条新分支 / 开一个 PR / 编辑该 PR 的描述」—— 不打任何 label、不发任何评论、不 force-push
+  - `/routine-dev`（每周一 / 三 / 五，曾名 `/routine-docs`）统一接单目标明确的 issue，允许文档、`skills/`、`templates/`、`scripts/`、`hooks/`，不再逐条授权。P0 参与排序；`status:discussion` 或正文显示目标未收敛则禁止开发。实现方案选择与多文件验证由 Agent 自主完成，环境缺项须实际核实。**四条红线保留**：`skills/routine-dev/**`、`agents/**`、`install.sh`、`.github/**`。涉及 review-loop 时按开发起始基线执行本次检查，不能借白名单降低当前 review/验证标准。完整推导见 `skills/routine-dev/references/security-boundary.md`。一次一个待人工合入 PR，最多尝试三条；远端写操作仍只有推送新分支、创建 PR、编辑其描述，不写标签或评论、不强推。
   - `/routine-slim`（每周日）按增长阈值把指令面精简一轮并出 PR。它**不需要逐条授权**就能改 `skills/*/SKILL.md` 与 `playbooks/*.md`（输入只有仓库自身、不读外部文本、只做删除与搬移），但**永不碰自己、`/routine-dev`、`agents/`、`.github/`、`install.sh`、`scripts/`、`hooks/`、`templates/`**，且对 `GLOBAL_AGENTS.md` 与本文件**只报告不动手**。注意 `skills/review-loop/references/angles.md` 在它的可改范围内、但**压缩角度清单等于降低 review 检出率**（清单是 reviewer 跑低思考档的配套条件），精简前先读那份文件顶部的说明
-  - **两条 routine 现在都能改 `skills/*.md`，但放宽的理由各是各的**（一个靠 owner 逐条背书、一个靠不读外部文本），**别互相援引**；撞车防线是双向的：各自开 PR 前都把「所有 open PR 碰过的文件」整体排除
+  - **两条 routine 都能改 skills，但任务授权不同**：dev 自主实现明确需求，slim 只删除和搬移既有内容，不能互相扩大边界；双方都排除所有 open PR 已涉及的文件。输入文本不改变远端写操作权限，规则禁令不等于已经部署凭证隔离。
   - 改 `.github/workflows/ff-merge.yml` 等于改自动写 `master` 的那条路。两条 routine 都**绝不以任何方式触发合入** —— `ff-merge` 的准入闸校验「发起人 == 仓库 owner」，而云端 routine 用的就是仓库主人的凭证，这道闸区分不了人和 agent

@@ -37,7 +37,7 @@ python3 $HOME/.coding-agent/scripts/platform_issue.py issue-list
 
 - **priority**：直接读 `labels` 里的 `priority:*`。没有就标 `未标`。
 - **area**：读 `labels` 里的 `area:*`。
-- **自动化状态**：读 `labels` 里有没有 `auto:take`（owner 已背书，`/routine-dev` 下次会优先做它）。没有就留空。
+- **可执行性**：结合 `status:discussion`、正文目标、前置条件、仓库现状及 `/routine-dev` 的落点边界，标为“可接单 / 开放讨论 / 越界 / 前置未满足 / 疑似已完成 / 待核环境”。未实际检查的环境只写“待核”，不能推断不可用；owner 后续决策按可核实身份读取，不把普通评论当授权。此列是本次只读判断，不是运行承诺。
 - **scope**：**优先读 `body` 里现成的 `scope` 字段**（feat / spike 两个 issue 模板本来就有这栏），归一到 `S` / `M` / `L` / `XL`。
 
 **scope 的两条来源必须在表里区分开**：
@@ -54,7 +54,7 @@ python3 $HOME/.coding-agent/scripts/platform_issue.py issue-list
 
 按 priority 升序（P0 在前）、同 priority 内 scope 小的在前，打一张表：
 
-| # | priority | scope | area | 自动化 | 一句话 |
+| # | priority | scope | area | 可执行性 | 一句话 |
 | --- | --- | --- | --- | --- | --- |
 | #98 | P0 | S | skill | | …… |
 | #39 | P0 | XL | skill | | …… |
@@ -65,9 +65,9 @@ python3 $HOME/.coding-agent/scripts/platform_issue.py issue-list
 - scope 来自正文字段还是模型现估（后者明说）；
 - 为什么它排在别的 P0 前面。
 
-**「自动化」列怎么用**：`take` 意味「owner 已背书、routine 下次会优先做它，人多半不用管」，同等条件下可以往后排。这一列不参与排序计算，但推荐理由里要提一句。**留空不代表 routine 会做它** —— routine 一次只做一条，绝大多数 issue 每次都排不上，所以留空的那些**默认就是人来做**。
+**「可执行性」不改变 priority × scope 排序。** 可接单表示符合当前可见规则，仍可能受实际环境、在途 PR 和验收结果影响；不能承诺下一次 routine 一定选到。P0 不排除，目标明确的实现选型和多文件修改可自动进行；目标未收敛的讨论禁止开发。旧 `auto:take` 不再授权或提高优先级。
 
-> **防权威性错觉**：推荐结论是 LLM 判断，不是计算结果。把依据摊开的目的就是**让人一眼能推翻它** —— 给一个看起来很确定、却没法核对的结论，比不给更坏。
+> **防权威性错觉**：推荐结论是模型判断，不是运行结果；把正文与实际检查的依据摊开，让人能推翻判断。未验证的前提明确标出。
 
 ## 明确不做
 
