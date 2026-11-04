@@ -1,0 +1,6 @@
+{
+  "name": "example-cli",
+  "version": "0.1.0",
+  "author": { "name": "Example Team" },
+  "description": "调用已有 CLI 并解读结果的 skill 示例"
+}
