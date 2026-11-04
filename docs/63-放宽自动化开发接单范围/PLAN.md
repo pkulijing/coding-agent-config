@@ -1,6 +1,6 @@
 # 实现计划
 
-> 状态：已执行，待合入
+> 状态：已执行，已合入并推送；标签已同步
 > 日期：2026-11-04
 > 工作树：`.worktrees/round63-auto-dev-scope`
 > 分支：`codex/round63-auto-dev-scope`
