@@ -24,7 +24,7 @@ graph TD
   classDef refactor fill:#fff3cd,stroke:#ffc107,color:#664d03,font-weight:bold
   classDef infra fill:#e2d9f3,stroke:#6f42c1,color:#3d1a78,font-weight:bold
   classDef research fill:#e2e3e5,stroke:#6c757d,color:#383d41,font-weight:bold
-  classDef epic fill:#f8f9fa,stroke:#adb5bd,color:#495057,font-weight:bold
+  classDef epic fill:#f8f9fa,stroke:#adb5bd,color:#495057,font-weight:bold,font-size:15px
   ROOT["coding-agent-config"]:::epic
   ROOT --> E0["基础机制"]:::epic
   E0 --> E1
@@ -179,9 +179,11 @@ graph TD
     N54["✨ 54 · routine 手动标记扩面"]:::feature
     N56["✨ 56 · routine 分诊结果缓存"]:::feature
     N59["🏗️ 59 · routine-dev 简化"]:::refactor
+    N63["✨ 63 · 放宽自动化开发接单范围"]:::feature
     N49 ~~~ N54
     N54 ~~~ N56
     N56 ~~~ N59
+    N59 ~~~ N63
   end
 
   subgraph E15["✅ DEVTREE 管理"]
@@ -228,7 +230,7 @@ graph TD
 
 ## 节点索引
 
-> 最后更新：2026-11-03 | 共 62 轮
+> 最后更新：2026-11-04 | 共 63 轮
 
 | # | 名称 | 类型 | 所属 Epic | 一句话描述 |
 | - | - | - | - | - |
@@ -294,6 +296,7 @@ graph TD
 | 60 | design 讨论式方案 skill | ✨ 功能 | 讨论式方案设计 | 新增 `/design`：需求本身还模糊时，在多轮对话里逐步收敛出框架级方案，**方案本身即产出**。plan mode 不合适——产物不进仓库、不记讨论过程、退出即执行、长讨论被上下文压缩丢决策。落点 `docs/design/<中文主题>/`（不编号、不占轮次号；不放顶级 `design/`：`docs/design/` 正是理想结构 `docs/design` + `docs/develop` 的一半，且顶级 `design/` 在前端项目易撞设计稿目录），只两份文件：`DISCUSSION.md` 是历史、只追加（阶段 0 原样保留背景，之后每阶段记输入 / 分析 / 决策 / 否决，决策即时写入以抵御上下文压缩、支撑 `--resume`），`DESIGN.md` 是快照、整体改写、带 `讨论中` / `已定稿` / `已搁置` 状态。不开 worktree、不写代码、不拆 issue、不进 DEVTREE、不写 SUMMARY，宪法同步写明豁免。**顺带根治一个反复出现的坑**：在 worktree 内跑 `install.sh` 会把两端全局软链整体改指到 worktree、删除即断链，round 31 / 51 / 52 / 53 / 54 都靠文档提醒绕开，本轮又实际踩中——改为 `install.sh` 入口硬拦（比较 git-dir 与 git-common-dir 物理路径，给出主 checkout 下的正确命令），7 项沙盘测试先红后绿，首版实现当场撞上 `$REPO_DIR）` 紧贴全角括号的 `set -u` 中止（shell playbook §2） |
 | 61 | Codex 全盘迁移 | 📦 工程 | 多 Agent 兼容 | 以 AGENTS.md 为规则正文，共享资源统一到 ~/.coding-agent、工作树统一到 .worktrees，适配 Codex 安装、review、hooks 和更新，并完成项目改名。 |
 | 62 | 设计讨论隔离与单提交归档 | 🐛 修复 | 讨论式方案设计 | 修复 /design 主树污染与中间快照堆积：主题独立 worktree、单提交归档，明确恢复、历史改写授权、远端同步与收尾边界；补九组 Git 沙盘及两轮独立 review。 |
+| 63 | 放宽自动化开发接单范围 | ✨ 功能 | 云端自动化 routine | 取消逐条授权与 P0 拒收，允许明确需求自主计划、实现与验证；开放讨论拒收，保留人工合入及权限红线。 |
 
 ---
 
@@ -363,7 +366,7 @@ graph TD
 #### 云端自动化 routine
 
 - 状态：进行中
-- 轮次：49, 54, 56, 59
+- 轮次：49, 54, 56, 59, 63
 
 #### 开发项管理
 
