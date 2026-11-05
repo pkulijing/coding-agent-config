@@ -72,6 +72,12 @@ review 的对象是**整个工作树的全部改动** —— `/commit` 调本 sk
 
 ## Step 4 · 委派独立 review orchestrator
 
+### 资源预检（两端均执行）
+
+按全局「技能依赖的资源检查」先读到本次档位需要的资源：`~/.coding-agent/skills/review-loop/references/angles.md`、`~/.coding-agent/agents/review-orchestrator.md` 与 `code-reviewer.md`；重档另含 `code-reviewer-deep.md`，Codex 另含 `~/.coding-agent/agents/codex-review.toml`。CC 还检查本次需要的命名定义在 `$HOME/.claude/agents/` 下可读。缺失、断链或不可读须显式列出实际路径、错误与影响，并按全局约定给出主 checkout 安装修复命令；不自动执行安装。
+
+**配置、角色任务书或角度清单缺失时，停止依赖它的委派，不猜模型 / 思考档、不凭记忆重建清单。** CC 注册入口缺失但共享定义与清单完整时，先报告部署缺口，再按 Step 5 实际核验命名类型；调用失败才进入既定降级链。文件都在但类型仍未注册时也走同一核验，不能把文件存在当作调用已成功。若缺失资源使既定降级也无法保住清单或配置，报告 review 阻塞，不能宣称 clean 或跳过 review 提交。
+
 ### Codex 委派入口
 
 实际工具有 `collaboration.spawn_agent` 时，走本入口，不调用 CC 的 `subagent_type`：
