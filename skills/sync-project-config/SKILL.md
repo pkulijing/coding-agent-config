@@ -22,7 +22,7 @@ description: 把 coding-agent-config 仓库管理的"跨项目共享开发配置
 - `~/.coding-agent/templates/` 存在且至少含一个 stack 子目录
 - `~/.coding-agent/global-repo/` 存在、是指向本仓库的软链、且能跑 `git rev-parse HEAD`
 
-失败 → 提示用户重跑 `bash ~/.coding-agent/global-repo/install.sh` 并退出。
+失败 → 按全局「技能依赖的资源检查」报告具体失败项与影响并退出；只有核实主 checkout 入口可用后，才给出其安装命令。`global-repo` 本身缺失时不得让用户执行该失效路径；非 git 仓库错误须先进入目标项目。后续读取 `MECHANICS.md`、所选 stack 的 `stack.yml` 与实际模板条目前同样检查，不能用空目录或其他 stack 兜底。
 
 ## 模式判断
 
