@@ -37,9 +37,9 @@ CC 指 Claude Code，Codex 指 OpenAI Codex，统称 Coding Agent；本规范对
 
 ## 核心开发模式
 
-按需求—计划—执行—总结协作。常规开发用 `/start` 在项目 `.worktrees/` 创建独立工作树；`/start --no-worktree` 用当前分支。无需开发文档的小改走 `/quick`，直接实现并自动 `/commit`。
+按需求—计划—执行—总结协作。常规开发用 `/start` 创建独立工作树，并在项目 `.worktrees/` 提供入口；`/start --no-worktree` 用当前分支。无需开发文档的小改走 `/quick`，直接实现并自动 `/commit`。
 
-新建工作树统一放在主 checkout 的 `.worktrees/` 下，不用 `~/.codex/worktrees/`、`~/.codex/.worktrees/` 等平台默认目录替代；仅用户明确要求其他位置或托管工作树时例外。
+工作树统一在主 checkout 的 `.worktrees/` 下提供入口：普通工作树直接建在其中；Codex 托管工作树保留应用分配的真实路径，并在其中建立指向该工作树的软链接。创建、恢复与清理入口按 `/start` 的 worktree 细则执行；用户明确指定其他布局时遵从。
 
 需求尚未明确时走 `/design`：在主题工作树维护 `docs/design/<中文主题>/DISCUSSION.md` 与 `DESIGN.md`，不占开发轮次、不写业务代码、不拆 issue、不进 DEVTREE。续聊定位原主题；归档、历史改写、合入和清理按该技能执行，不自行改写共享历史。
 

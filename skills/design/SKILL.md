@@ -13,7 +13,7 @@ description: 讨论式方案设计：需求模糊时，在主题独立 worktree 
 | `/start` → `/finish` | 需求明确，要开发 | `docs/<N>-*/` 三件套 + 代码 |
 | `/quick` | 小改，一句话说得清 | 仅 commit |
 
-**默认隔离**：每个主题在项目 `.worktrees/` 下使用独立分支与工作树，讨论期间维护同主题一个归档提交。**定位或创建工作树之前必读** [references/git-lifecycle.md](references/git-lifecycle.md) §1；**首次归档、续次存档、合入或清理之前必读**该文件 §2–§4。资源统一从 `~/.coding-agent/skills/design/` 读取。
+**默认隔离**：每个主题使用独立分支与工作树，在项目 `.worktrees/` 下提供入口（普通目录或指向 Codex 托管工作树的软链接），讨论期间维护同主题一个归档提交。**定位或创建工作树之前必读** [references/git-lifecycle.md](references/git-lifecycle.md) §1；**首次归档、续次存档、合入或清理之前必读**该文件 §2–§4。资源统一从 `~/.coding-agent/skills/design/` 读取。
 
 **明确不做**：不占开发轮次、不启动开发执行计划模式（CC 的原生计划工具不用于本形态；Codex 按讨论记录推进，无需切换模式）、不改业务代码、不拆 issue、不碰 `docs/DEVTREE.md`、不写 `SUMMARY.md`。主工作树的无关内容和暂存区保持原样。
 
