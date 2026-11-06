@@ -13,7 +13,7 @@
 
 ## 判定数据源
 
-- `git status --porcelain` + `git diff --cached --name-status` 的并集（本步在 commit 前跑，未提交变更也算）。
+- 本轮起始 SHA 到 HEAD 的变更，加工作树 staged/unstaged 与未跟踪文件；执行阶段已自动提交的改动也必须计入。
 - **明示忽略**前面几步刚改的 `SUMMARY.md` / `DEVTREE.md` 自身——它们不应触发 README review。
 
 ## 触发后子步

@@ -22,8 +22,7 @@
       "includes": ["src/gl/**"],
       "linter": {
         "rules": {
-          "style": { "noNonNullAssertion": "off" },
-          "correctness": { "useHookAtTopLevel": "off" }
+          "style": { "noNonNullAssertion": "off" }
         }
       }
     }

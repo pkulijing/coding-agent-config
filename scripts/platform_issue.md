@@ -5,11 +5,22 @@
 ## 调用形式
 
 ```bash
-python3 $HOME/.coding-agent/scripts/platform_issue.py [--platform github|gitlab] [--repo <slug>] <subcommand> ...
+uv run $HOME/.coding-agent/scripts/platform_issue.py [--platform github|gitlab] <subcommand> ...
 ```
 
-- `--platform` / `--repo` 省略时按当前仓库 `git remote` 自动判定、对本仓库操作；跨仓库操作（如向 coding-agent-config 沉淀 issue）显式带 `--repo <slug>`。
-- 常用子命令：`issue-view <N>`、`issue-create`、`issue-comment`、`issue-label-add` / `issue-label-remove`、`label-list`、`label-sync-from-file <path>`。
+- `--platform` 省略时按当前仓库 `git remote` 自动判定。支持跨仓库的子命令接受其后方的 `--repo <slug>`；平台不同还须显式指定 `--platform`，不能仅靠目标 slug 推断。
+- 常用子命令：`issue-view <N>`、`issue-create`、`issue-close <N>`、`issue-comment`、`issue-label-add` / `issue-label-remove`、`label-list`、`label-sync-from-file <path>`。
+
+## issue-close 语义
+
+```bash
+uv run $HOME/.coding-agent/scripts/platform_issue.py [--platform github|gitlab] issue-close <N> [--reason completed|not-planned] [--repo <slug>]
+```
+
+- 默认原因 `completed`；GitHub 将 `not-planned` 映射为原生 `--reason "not planned"`。GitLab 原生 close 没有原因字段，helper 明确提示此限制；“刻意不做”的原因仍需正文与 `wontfix` 标签承载，不伪造 GitLab `stateReason`。
+- 使用原生 close 后回读同一仓库的 issue：两端确认 `state` 为 closed，GitHub 另确认原因匹配。已关闭但原因不符时返回失败，不自动重开或覆盖。不会添加评论或改标签。
+- 仅验证通过才输出 `closed on <platform>: #<N>`。关闭失败返回 1 并展示原生错误；回读失败或状态不符也返回 1，并明确关闭可能已经生效，不能据此重复创建 issue。CLI 缺失仍返回 4，平台未知返回 2。
+- 参数已核对本机 `gh 2.92.0`、`glab 1.93.0` 帮助；GitHub 的“已关闭直接成功、不更新原因”行为见[原生实现](https://github.com/cli/cli/blob/v2.92.0/pkg/cmd/issue/close/close.go)。测试只验证编排和失败分支，未对真实 issue 执行关闭。
 
 ## issue-view 语义
 

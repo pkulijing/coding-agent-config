@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""指令面预算量化 —— 给 `/routine-slim` 当触发器、给精简 PR 当证据。
+"""指令面体量与部分引用检查，供维护时辅助观察。
 
 三个子命令：
 
@@ -7,22 +7,20 @@
     delta [--since REF]     与历史版本比，算增长率（无状态：基线从 git 历史算）
     check-refs              跨文件引用可达性检查
 
-**为什么要有这个脚本**：没有数，精简就是拍脑袋 —— 既定不出「该不该动手」的阈值，
-也证明不了「省了多少」。
+字符数不代表规则价值、模型质量或是否必须精简。引用检查只覆盖代码跨度中的
+已知仓库路径，不验证所有 Markdown 链接、章节锚点或加载条件。
 
 token 估算的标定
 ----------------
-中文按英文经验值（4 字符/token）估会低估约 3 倍，必须实测标定。本脚本的系数由 CC
-`/context` 的两个实测点解出（2026-07-31，claude-opus-5）：
+为保持历史报表兼容，继续使用仓库记录的 CC `/context` 两点拟合系数
+（2026-07-31，claude-opus-5）；这不是当前模型的 tokenizer 计数或实测：
 
     GLOBAL_AGENTS.md  9,922 字符（CJK 4,844 / 非 CJK 5,078） = 8,000 token
     CLAUDE.md         5,042 字符（CJK 1,403 / 非 CJK 3,639） = 3,600 token
 
     => CJK 1.0313 token/字、非 CJK 0.5917 token/字
 
-非 CJK 那档比英文散文的 0.25 高得多，因为这里的「非 CJK」大量是 markdown 记号、
-路径、命令与代码 —— 这类切得比散文碎。**换模型或大改文风后需重新标定**：跑
-`/context` 拿新的实测点，重解下面两个常数。
+不据此估算当前模型费用或宣称上下文质量提升，也不要求维护新的标定项目。
 """
 
 import argparse
@@ -45,9 +43,10 @@ def _glob_match(path: str, pattern: str) -> bool:
                     for part in re.split(r"(\*)", pattern))
     return re.fullmatch(regex, path) is not None
 
-# ── token 估算系数（标定来源见模块 docstring，改动前先重新实测）────────────────
+# ── 历史 token 估算系数（保留报表兼容，不代表当前模型）──────────────────────
 CJK_TOKENS_PER_CHAR = 1.0313
 NON_CJK_TOKENS_PER_CHAR = 0.5917
+TOKEN_ESTIMATE_NOTE = "token 为历史系数估算，非当前模型实测；字符数不代表规则价值或模型质量"
 
 _CJK_RANGES = (
     (0x3000, 0x303F),    # CJK 标点
@@ -75,6 +74,7 @@ def estimate_tokens(text: str) -> int:
 # 2k token），但它随 SKILL.md 一起改、单独建模没有收益，故并入 lazy 计。
 RESIDENT = ("GLOBAL_AGENTS.md", "AGENTS.md", "CLAUDE.md")
 LAZY_GLOBS = ("skills/*/SKILL.md", "skills/*/references/*.md", "playbooks/*.md",
+              "playbooks/references/*.md",
               "templates/MECHANICS.md")
 
 
@@ -131,7 +131,7 @@ def measure(root: Path) -> Report:
 
 
 # ── 跨文件引用检查 ────────────────────────────────────────────────────────────
-# 「只允许搬走不允许蒸发」的机械兑现：指针指不到东西，等于那条信息真的没了。
+# 检查仍然保留的路径引用是否可达；不要求已退役内容另有存放处。
 #
 # **只认精确白名单，不做启发式**。因为 skill 正文里谈的路径大多根本不是本仓的：
 # `src/`、`frontend/`、`.vscode/settings.json`、`docs/BACKLOG.md` 说的是**消费方
@@ -149,9 +149,10 @@ _CHECKABLE = (
     "CLAUDE.md",
     "agents/*.md",
     "playbooks/*.md",
+    "playbooks/references/*.md",
     "skills/*/SKILL.md",
     "skills/*/references/*.md",
-    "references/*.md",            # 相对所属 skill 目录
+    "references/*.md",            # 相对所属 skill 目录或 playbooks/
     "scripts/*",
     "hooks/*",
     "templates/*.md",             # 顶层共享文档（如 MECHANICS.md），不含各 stack 内容
@@ -210,12 +211,16 @@ def check_refs(root: Path) -> list[BrokenRef]:
     for rel in instruction_paths(root):
         text = (root / rel).read_text(encoding="utf-8")
         parts = rel.split("/")
-        # `references/x.md` 是相对所属 skill 目录写的（见 skills/finish/SKILL.md 的先例）
-        skill_dir = "/".join(parts[:2]) if parts[0] == "skills" and len(parts) > 2 else None
+        # references 相对所属 skill 或 playbooks 根，不相对仓库根。
+        reference_dir = None
+        if parts[0] == "skills" and len(parts) > 2:
+            reference_dir = "/".join(parts[:2])
+        elif parts[0] == "playbooks":
+            reference_dir = "playbooks"
         for ref in extract_refs(text):
             target = root / ref
-            if ref.startswith("references/") and skill_dir:
-                target = root / skill_dir / ref
+            if ref.startswith("references/") and reference_dir:
+                target = root / reference_dir / ref
             if not target.exists():
                 broken.append(BrokenRef(rel, ref))
     return broken
@@ -303,9 +308,11 @@ def _cmd_measure(args) -> int:
             "total_chars": report.total_chars, "total_tokens": report.total_tokens,
             "resident_chars": report.resident_chars, "resident_tokens": report.resident_tokens,
             "lazy_chars": report.lazy_chars, "lazy_tokens": report.lazy_tokens,
+            "token_estimate_note": TOKEN_ESTIMATE_NOTE,
             "entries": [vars(e) for e in report.entries],
         }, ensure_ascii=False, indent=2))
         return 0
+    print(TOKEN_ESTIMATE_NOTE)
     print(f"{'字符':>8} {'~token':>8}  {'类别':<9} 文件")
     for e in sorted(report.entries, key=lambda e: -e.chars):
         print(f"{e.chars:8,} {e.tokens:8,}  {e.category:<9} {e.path}")
@@ -317,6 +324,7 @@ def _cmd_measure(args) -> int:
 
 def _cmd_delta(args) -> int:
     d = delta(_repo_root(), args.since)
+    print(TOKEN_ESTIMATE_NOTE)
     print(f"基线 {d.since_ref[:12]}：{d.old_chars:,} 字符 / ~{d.old_tokens:,} token")
     print(f"当前          ：{d.new_chars:,} 字符 / ~{d.new_tokens:,} token")
     print(f"增长          ：{d.growth_ratio:+.1%}")
@@ -327,7 +335,7 @@ def _cmd_delta(args) -> int:
             print(f"  {n - o:+8,}  {o:7,} → {n:7,}  {p}")
     if args.threshold is not None:
         over = d.growth_ratio > args.threshold / 100
-        print(f"\n阈值 {args.threshold:+.0f}%：{'超出，该动手' if over else '未超出，空转退出'}")
+        print(f"\n阈值 {args.threshold:+.0f}%：{'超出' if over else '未超出'}（仅体量比较）")
         return 1 if over else 0
     return 0
 
@@ -335,7 +343,7 @@ def _cmd_delta(args) -> int:
 def _cmd_check_refs(args) -> int:
     broken = check_refs(_repo_root())
     if not broken:
-        print("check-refs: 无失效引用 ✅")
+        print("check-refs: 已覆盖的路径引用无失效项；未检查普通链接、标题和触发语义")
         return 0
     print(f"check-refs: {len(broken)} 条失效引用 ❌")
     for b in broken:
@@ -354,7 +362,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("delta", help="与历史版本比增长率")
     p.add_argument("--since", help="基线 git ref（缺省取 4 周前）")
     p.add_argument("--threshold", type=float,
-                   help="增长率阈值（百分比）；超出则 exit 1，供 routine 当闸用")
+                   help="兼容体量比较：增长率阈值（百分比），超出则 exit 1；不判定内容质量")
     p.set_defaults(func=_cmd_delta)
 
     p = sub.add_parser("check-refs", help="跨文件引用可达性检查")

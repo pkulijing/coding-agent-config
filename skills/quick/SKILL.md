@@ -5,18 +5,6 @@ description: 轻量开发流：不落 docs / 不开 worktree / 不进计划模�
 
 用户调用此 skill 表示要走**轻量开发流**：一个很小的需求（如改一个小函数、修个笔误、调一处配置），不值得引入 `/start` + `/finish` 的重量级文档三件套，只要在 commit message 里把「改了啥、为什么」说清楚即可。
 
-`/quick` 是「三档开发流」里最轻的一档：
-
-| 档         | 入口                               | worktree | docs 三件套         | 计划模式 | 收尾仪式                                               |
-| ---------- | ---------------------------------- | -------- | ------------------- | -------- | ------------------------------------------------------ |
-| 重（默认） | `/start` → `/finish`               | ✓        | PROMPT/PLAN/SUMMARY | ✓        | devtree / 沉淀反思 / README / 关 issue / worktree 收尾 |
-| 中         | `/start --no-worktree` → `/finish` | ✗        | PROMPT/PLAN/SUMMARY | ✓        | 同上（跳 worktree 收尾）                               |
-| **轻**     | **`/quick`**                       | ✗        | 无                  | 无       | 仅 `/commit`                                           |
-
-表中「计划模式」指先写计划并取得用户确认；CC 可使用原生计划工具，Codex 没有模式切换工具时按文档与对话确认执行，不要求调用不存在的工具。
-
-`/quick` 从头管到尾（直接干 → commit 说清楚就完），不像 start/finish 因中间要人 review PLAN 而拆成两截。
-
 ## 前置判断：这个需求真的适合 `/quick` 吗
 
 `/quick` 只服务「一眼能说清、改动局部、无需追踪」的小改。命中以下任一信号，**先停下反问用户「是否该走正规 `/start`」**，而不是硬用 quick：
@@ -44,9 +32,9 @@ args 可含以下项（三者正交、可任意组合），解析后剩余文字
 
 **仅当 args 含 `--branch`**：
 
-- 探测主分支：`git symbolic-ref --short refs/remotes/origin/HEAD`（得 `origin/master` → 取末段）；失败则本地探测 `main` / `master`。
+- 探测主分支：`git symbolic-ref --short refs/remotes/origin/HEAD`（仅剥掉 `origin/` 前缀）；失败则本地探测 `main` / `master`。
 - 若工作区已有未提交改动 → 提示用户「切分支会带走当前未提交改动」，等用户确认。
-- `git switch -c codex/quick/<ascii 短描述>`（从当前 HEAD 切，**不建 worktree**）。短描述从需求描述提炼，**规格与「为什么 ref 位置必须纯 ASCII」同 `/start`，见 `~/.coding-agent/skills/start/references/worktree-create.md`「短描述规格」条**，此处不复述。
+- `git switch -c codex/quick/<ascii 短描述>`（从当前 HEAD 切，**不建 worktree**）。短描述从需求描述提炼，**命名规格同 `/start`，见 `~/.coding-agent/skills/start/references/worktree-create.md`「短描述规格」条**，此处不复述。
 
 **默认（不带 `--branch`）**：跳过本步，在当前所在分支直接改。若当前分支就是主分支（`master` / `main`），**允许**——简易流小改直提主分支是合理的，但打印一行提示让用户知情（「将在主分支 `<主分支>` 上直接改并提交」），给用户一个喊停的机会。
 

@@ -370,6 +370,59 @@ def cmd_issue_create(args):
     return EXIT_OK
 
 
+def build_issue_close_cmd(platform, number, reason, repo):
+    """Build native close argv; GitLab has no close-reason field."""
+    if platform == PLATFORM_GITHUB:
+        cmd = ["gh", "issue", "close", str(number), "--reason", reason.replace("-", " ")]
+    else:
+        cmd = ["glab", "issue", "close", str(number)]
+    if repo:
+        cmd += ["--repo", repo]
+    return cmd
+
+
+def cmd_issue_close(args):
+    plat = resolve_platform(args.platform)
+    if plat == PLATFORM_UNKNOWN:
+        sys.stderr.write("error: cannot detect platform from git remote origin\n")
+        return EXIT_PLATFORM_UNKNOWN
+    if plat == PLATFORM_GITLAB:
+        sys.stderr.write(
+            "note: gitlab does not support a close-reason field; "
+            "preserve the decision in issue labels/body\n"
+        )
+    result = _run(build_issue_close_cmd(plat, args.number, args.reason, args.repo))
+    if result.returncode != 0:
+        sys.stderr.write(result.stderr or result.stdout)
+        return EXIT_ERROR
+
+    # gh returns zero for an already-closed issue without updating its reason.
+    # Read the actual state from the same target before claiming completion.
+    view_cmd = build_issue_view_cmd(plat, args.number)
+    if args.repo:
+        view_cmd += ["--repo", args.repo]
+    result = _run(view_cmd)
+    prefix = "error: close command completed but verification failed; "
+    if result.returncode != 0:
+        sys.stderr.write(prefix + "issue may already be closed\n")
+        sys.stderr.write(result.stderr or result.stdout)
+        return EXIT_ERROR
+    try:
+        raw = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        sys.stderr.write(prefix + f"invalid issue JSON: {exc}\n")
+        return EXIT_ERROR
+    if not isinstance(raw, dict) or str(raw.get("state", "")).lower() != "closed":
+        sys.stderr.write(prefix + "expected closed state\n")
+        return EXIT_ERROR
+    expected_reason = args.reason.replace("-", "_").upper()
+    if plat == PLATFORM_GITHUB and raw.get("stateReason") != expected_reason:
+        sys.stderr.write(prefix + f"expected reason {expected_reason}; issue is closed\n")
+        return EXIT_ERROR
+    print(f"closed on {plat}: #{args.number}")
+    return EXIT_OK
+
+
 def build_issue_comment_cmd(platform, number, body_file, body, repo):
     """Build the gh/glab issue-comment argv (pure, no execution).
 
@@ -1640,6 +1693,11 @@ def build_parser():
         "such a label-less distillation issue is refused",
     )
 
+    p_close = sub.add_parser("issue-close")
+    p_close.add_argument("number", type=int)
+    p_close.add_argument("--reason", choices=["completed", "not-planned"], default="completed")
+    p_close.add_argument("--repo", default=None, help="Target repository for both close and verification")
+
     p_view = sub.add_parser("issue-view")
     p_view.add_argument("number", type=int)
     p_view.add_argument(
@@ -1719,6 +1777,7 @@ def main():
         "auth-status": cmd_auth_status,
         "repo-slug": cmd_repo_slug,
         "issue-create": cmd_issue_create,
+        "issue-close": cmd_issue_close,
         "issue-view": cmd_issue_view,
         "issue-list": cmd_issue_list,
         "issue-comment": cmd_issue_comment,
