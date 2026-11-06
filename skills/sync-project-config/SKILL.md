@@ -28,7 +28,7 @@ description: 把 coding-agent-config 仓库管理的"跨项目共享开发配置
 
 ### 旧名 marker 自动迁移
 
-marker 文件名在 round 22 由 `.cc-template.yml` 改为 `.agent-template.yml`。读 marker 前先查：
+读 marker 前检查旧入口 `.cc-template.yml`：
 
 - 只有旧名 → `git mv .cc-template.yml .agent-template.yml`，并明确告知用户已自动迁移
 - **两者同时存在** → 报冲突并停止，请用户手动处理（不猜哪个为准）
@@ -39,7 +39,7 @@ marker 文件名在 round 22 由 `.cc-template.yml` 改为 `.agent-template.yml`
 
 ### 废弃 BACKLOG.md 一次性迁移
 
-需求管理已改为「云端 issue 单一真源、无本地索引文件」（见 `GLOBAL_AGENTS.md`）。老项目遗留的 `docs/BACKLOG.md` 与云端 open issues 是双写副本，正是新约定要消除的 drift；sync 是「把约定变更落地到老项目」的天然承载点。
+只在存在 `docs/BACKLOG.md` 时迁移其未归档信息，保持 issue 为需求真源。
 
 项目根无 `docs/BACKLOG.md` → 跳过本节（绝大多数项目走这里）。有则停下来引导一次性迁移，迁完 `git rm` 再继续正常 sync：
 
@@ -86,7 +86,7 @@ git -C ~/.coding-agent/global-repo diff --name-status <old>..<new> -- \
 
 **先按 diff 路径 `templates/<source>/...` 判定来源是哪个 stack 或 `_common`**，再按 `~/.coding-agent/templates/MECHANICS.md` §1 映射到项目侧路径。
 
-读 3 份内容做对比：模板旧版 `git -C ~/.coding-agent/global-repo show <old>:templates/<source>/<scope>/<rel>`、模板新版（直接读 `~/.coding-agent/templates/...`）、项目侧现状（直接 Read）。
+读 3 份内容做对比：模板旧版 `git -C ~/.coding-agent/global-repo show <old>:templates/<source>/<scope>/<rel>`、模板新版 `git -C ~/.coding-agent/global-repo show <new>:templates/<source>/<scope>/<rel>`、项目侧现状（直接 Read）。
 
 | 模板侧 | 项目侧 | 默认建议 |
 | --- | --- | --- |

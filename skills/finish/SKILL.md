@@ -1,6 +1,6 @@
 ---
 name: finish
-description: 完成当前开发项：撰写 SUMMARY.md，反思跨项目可沉淀流程并可向 coding-agent-config 提 issue，关联并关闭 issue（GitHub / GitLab，如有），提交代码
+description: 完成当前开发项：撰写 SUMMARY.md、更新开发树与相关 README、关联 issue、提交并收尾 worktree。发现有具体跨项目价值的候选时，经确认提 issue。
 ---
 
 用户调用此 skill 表示当前开发项已完成。
@@ -16,19 +16,13 @@ description: 完成当前开发项：撰写 SUMMARY.md，反思跨项目可沉�
 | `--keep-backup` | ✓ | ✓ | ✓ | ✓ | ✗ |
 | `--no-rebase` | ✗ | ⚠️ 仅当已可 FF | （随其它开关） | （随其它开关） | （随其它开关） |
 
-各开关**做什么以上表为准**，下面只说什么时候用它：
-
-- `--no-merge`（同义 `--keep-branch`）：开发已做完但还不想合入主干（等 review / 等跨仓联调）。**worktree 照删** —— 留着它主工作树反而切不到该分支，删掉后 `git switch <分支>` 即可继续用。
-- `--keep-backup`：高风险轮想让 backup tag 多留几天兜底。
-- `--no-rebase`：不想动历史；此时**只有分支相对主分支已可 FF 才会 merge**，否则停下提示。
-
-开关可组合、语义叠加（`--no-merge --keep-backup` 与单 `--no-merge` 等价 —— 后者本就保留 backup tag）。
+`--no-merge` 保留分支与备份但仍清理 worktree；`--no-rebase` 只有已可 FF 才能合入。开关可组合，行为以上表为准。
 
 ## Step 1 · 撰写 SUMMARY.md
 
 按宪法「总结」部分的要求，在 `docs/` 下当前开发项文件夹中撰写 `SUMMARY.md`（结合 args）。
 
-末尾（「后续 TODO」之后）额外加一段 **「## 可沉淀项」**：反思本轮有没有**值得沉淀成跨项目资产 / 可复用流程**的经验，列出来并标注去向（判据见 Step 3）。无则写「暂无」，**不留空让人猜**。这是本地持久记录，Step 3 据此对跨项目项采取行动。
+只有符合 Step 3 的跨项目候选才增加「可沉淀项」段；没有候选时不写占位、不另行询问。
 
 ## Step 2 · 扫 SUMMARY 提示「刻意不做」项归档
 
@@ -42,7 +36,7 @@ description: 完成当前开发项：撰写 SUMMARY.md，反思跨项目可沉�
 python3 $HOME/.coding-agent/scripts/platform_issue.py issue-create \
   --title "刻意不做：<一句话>" --body-file /tmp/wontfix.md \
   --label wontfix --label type:docs --label area:<Y> --label priority:P2
-# 建完 close：gh issue close <N> -r "not planned"  /  glab issue close <N>
+python3 $HOME/.coding-agent/scripts/platform_issue.py issue-close <N> --reason not-planned
 ```
 
 **要往 issue 补材料**（验证产物、实测数据、结论回写）时走 helper 的 `issue-comment --issue <N> --body-file <F>`，**不要直调 `gh issue comment`**。
@@ -51,15 +45,15 @@ body 写原因 + SUMMARY 路径。`wontfix` label 缺失先补进 `.github/label
 
 用户说「无」→ 跳过。
 
-## Step 3 · 跨项目可沉淀流程反思（在任意项目都跑）
+## Step 3 · 有价值的跨项目候选
 
-开发轮里冒出的「值得复用的重复流程」常散落对话里靠人捡、易错过抽象时机。这里主动反思，对**跨项目资产**类候选直接向 coding-agent-config 跨仓库提 issue。
+优先在来源项目修代码、补测试或记录环境约定。事故发生过、重复发生过或看起来通用，都不自动成为新增全局规则的理由。
 
 ### 3.1 候选判据
 
-扫本轮过程（含 Step 1 写的「可沉淀项」段），**尽量三条都满足**才算，宁缺毋滥控制噪音：**跨项目通用**（不是本项目特有逻辑）、**有具体落点**（能指明改哪个 template 字段 / 哪个 skill·hook / 宪法哪段）、**≥2 次的模式或明显通用**。
+仅保留能同时说明以下内容的候选：明确的跨项目适用条件；现有工具、测试或规则不能覆盖的价值；具体共享落点；为何不能只留在来源项目。优先修复已有真源，不增加同义规则。用户明确提出的共享偏好可直接作为依据，不强求事故次数。
 
-**最多保留 3 条**（按价值排序）。无候选 → 打印「本轮无可沉淀项」，结束本步。
+按减少用户介入的价值排序，最多 3 条。无候选直接结束本步，不要求用户寻找沉淀项。
 
 ### 3.2 去向分类
 
@@ -72,7 +66,7 @@ body 写原因 + SUMMARY 路径。`wontfix` label 缺失先补进 `.github/label
 
 ### 3.4 逐条确认（外部可见动作，不自动 file）
 
-对每个跨项目候选**逐条**问用户：现在提 / 先放一放 / 不提。可只提其中几条；「先放一放」不阻塞 commit。
+把候选及适用条件、价值、落点集中呈现，请用户选择要提的条目。未获确认不 file；延后或不提不阻塞 commit。
 
 ### 3.5 对确认要提的候选跨仓库 file
 
@@ -95,17 +89,17 @@ body 写原因 + SUMMARY 路径。`wontfix` label 缺失先补进 `.github/label
 
    只从该列表挑，不在列表的不要硬塞（为什么必须校验、以及硬塞失败后的补救路径，见 `scripts/platform_issue.md`「三轴 label 硬约束」）。
 
-3. **写临时 body**（`/tmp/distill-<n>.md`）：来源项目名 + 轮次 + 为什么值得沉淀 + 具体落点建议 + 末尾标注「跨项目自动沉淀 issue」。当前项目有 remote 就给回链 URL。
+3. **写临时 body**（`/tmp/distill-<n>.md`）：来源项目与轮次、适用条件、现有能力的缺口、具体落点与不应扩大的范围；末尾标注「经用户确认的跨项目候选」。当前项目有 remote 就给回链 URL。不要复制事故全过程。
 
 4. **调 helper 跨仓库提**（`--platform "$PLAT" issue-create --repo "$SLUG"` + 三轴 label + `--body-file`），成功则打印返回的 issue URL。
 
-   **失败兜底（关键）**：helper 报错时**绝不去掉 `--label` 重试以求创建成功** —— 那正是历史上产出无 label 裸 issue 的原因（完整推导见 `scripts/platform_issue.md`）。正确做法是回第 2 步重新校验 / 修正 label，带齐三轴重试；仍无法解决则停下把错误报给用户（候选已记在 SUMMARY，可手动补，不阻塞 finish）。
+   helper 报错时不得去掉 `--label` 重试；重新核对目标仓库的三轴 label，仍失败则报告错误，保留 SUMMARY 候选且继续 finish。
 
 ## Step 4 · 识别 issue 关联
 
 读 `docs/<本轮编号>-*/PROMPT.md` 顶部有没有 `> 来自 [#<N> ...](<URL>)` 引用块（由 `/start <issue#>` 写入）。
 
-**有** → 提取**全部** issue 号与 URL（一轮批量收多个 issue 时每个各一行），传给 `/commit` 让 message body 自然包含 `Closes #N`（不嵌 title）。合并到 default branch 时自动关 issue —— 该关键字在 GitHub 与 GitLab 默认分支均原生生效（GitLab 还支持 `Fixes` / `Resolves` / `Implements` 与 cross-project 引用），本 skill 无需平台分支处理。
+**有** → 提取全部 issue 号与 URL，传给 `/commit`：已完整交付的各写一行 `Closes #N`；未完成的只写 `Refs #N` 并说明剩余验收项。合入后的关闭状态按项目实际合入路径核验，不把关键字存在当作已经关闭。
 
 **关多个 issue 时每个都要带自己的关闭关键字、各占一行**：
 
@@ -114,7 +108,7 @@ Closes #13
 Closes #20
 ```
 
-**绝不要**写成 `Closes #13 #20`（含逗号的 `Closes #13, #20` 同样不行）—— 关闭关键字只对**紧跟其后的第一个** issue 号生效，后面的会被当成普通引用、**不会关闭**。这是踩过的坑（一行写四个只关了第一个）。
+不要把多个号合写成 `Closes #13 #20`；每个 issue 各带关闭关键字。
 
 **无 issue 关联**（自由描述分支）→ 跳过本步剩余部分。
 
@@ -136,13 +130,11 @@ Closes #20
 
 ## Step 6 · README review & update
 
-放在 commit 之前，让 README 改动跟本轮代码进同一 commit。命中触发清单则按 `references/readme-review.md` 执行（触发条件 / 不触发 / 判定数据源 / 子步全在那里）；否则打印一行「README review skipped: 本轮变更不在触发清单」并跳过。
+本轮新增/删除 skill 或 hook、改变顶层目录结构，或改变用户入口、安装、模板、命令接口等约定时，读 `references/readme-review.md` 更新相关段落。纯内部重构、开发记录、依赖升级或不改变用户使用方式的修复不触发。SUMMARY/DEVTREE 自身不触发；用本轮已提交及未提交 diff 判断，避免只看到最后一次提交。README 更新随本轮提交。
 
 ## Step 7 · 调用 `/commit`
 
 提交所有变更（含 SUMMARY.md / DEVTREE.md / README.md）。Step 4 识别到 issue 关联时，把 `Closes #N` 作为额外上下文传给它，**多 issue 按 Step 4 的硬规则各占一行**。
-
-`/commit` 会**按当前执行的 Agent 选 `Co-authored-by` 身份** —— **Codex 执行 `/finish` 时同样不写 Claude 身份**，别在 finish 语境下被默认成 Claude。
 
 ## Step 8 · worktree 收尾
 

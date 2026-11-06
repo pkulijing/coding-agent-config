@@ -1,14 +1,6 @@
 # 模板落地机制
 
-> **单一真源**：`templates/` 下的东西怎么落到项目里，只在本文写一遍。`/bootstrap`
-> （首次套用）与 `/sync-project-config`（后续同步 / adopt）共读，两端经 `install.sh`
-> 目录级软链后路径为 `~/.coding-agent/templates/MECHANICS.md`。
->
-> **何时读**：这两个 skill **在真正往项目里写文件之前必须先读本文** —— 具体是
-> bootstrap 的 Step 3.3 与 sync 的 2.4 / 4.3。只看流程骨架不落地的（如
-> `--dry-run`、只想知道有哪几步）不必读。
->
-> 字段 schema 与当初的设计取舍见 `~/.coding-agent/global-repo/docs/11-跨项目共享模板与sync-skill/`。
+> `/bootstrap` 与 `/sync-project-config` 在实际落地模板前读取本文；只读预览不加载操作细节。共享路径为 `~/.coding-agent/templates/MECHANICS.md`。
 
 ## 1. 目录约定与落点
 
@@ -60,11 +52,11 @@
 - 目标**已存在** → 按目标语义合并：`extensions.json` 的 `recommendations` 数组做**有序去重 union**；`settings.json` 做**顶层键 union**（键只一侧→并入；两侧都是对象→递归深合并；标量冲突→问用户）。
 - 多个 stack 的同名 fragment 依次合并进**同一个**根目标（先 `_common` 再逐个 stack），得各 stack 的并集（前后端的语言作用域键天然不相交，纯 union）。
 
-**为什么一定落根**：VS Code 单根工作区只读仓库根的 `.vscode/`，子目录 stack（如 `react-vite`）也必须借此落根才生效。
+子目录 stack 也向项目根 `.vscode/` 贡献配置。
 
 ### 2.3 `<target>.yaml|yml.fragment` —— YAML 合并
 
-目标是**项目根**的 `<target>`（去掉 `.fragment`）。当前用它的是**门禁类根文件**：`.pre-commit-config.yaml` 与 `.gitlab-ci.yml` —— 它们落项目根，而**前后端两维都要往同一个路径贡献内容**，混栈仓库需要的是两侧的**并集**而不是二选一（少了谁，那一维就没有闸门）。
+目标是项目根的 `<target>`（去掉 `.fragment`）。混栈项目的 `.pre-commit-config.yaml` 与 `.gitlab-ci.yml` 合并前后端门禁，不能二选一。
 
 - 目标**不存在** → 用 fragment 内容创建。
 - 目标**已存在** → 按 key 合并，规则按目标语义：
@@ -84,16 +76,12 @@
 
 **落地**：问用户选一个 key（展示人话说明，未知 key 直接展示字面），只把选中那份落地到该来源 stack 的落点，其余一律不落地；目标已存在则走冲突清单。选择记进 marker 对应 stack 的 `variants[<target>]`。
 
-**为什么选择要前移到交互、而不是都落地让用户删**：`.gitlab-ci.yml` 这类配置会被工具**真实解析执行**，多变体并存 + 手删是地雷（漏删即得一份会真跑的错误配置）。
-
 **当前唯一变体组** `.gitlab-ci.yml`（人话说明，改动时本文是唯一出处）：
 
 - `docker` —— Docker executor runner（GitLab.com / 官方 docker runner，image 提供 uv+Python）
 - `shell` —— 本地 shell runner（公司自建、无 docker executor，runner 无 uv 时脚本装）
 
-**变体落地排在 fragment 合并之前**（§2.3 硬约束 1）：`.gitlab-ci.yml` 既是变体组的目标、又是 `react-vite` 那份 YAML fragment 的目标，顺序反了会白白多问用户一次冲突。
-
-**变体文件内部复用一律用标准 YAML 锚点（`&anchor` / `*anchor`），禁用 GitLab 的 `!reference` tag**：通用 YAML 解析器（pre-commit 的 `check-yaml` 就是一个）不认这个自定义 tag，会报 `could not determine a constructor for the tag` 让 commit 直接失败；锚点 GitLab 同样支持、且 `check-yaml` 能过。变体是**整份落地、不参与合并**的，所以它们用锚点没有 §2.3 那条「fragment 里不许用锚点」的顾虑。
+变体内部复用使用标准 YAML 锚点，不用 `!reference` 自定义 tag，以兼容模板的通用 YAML 检查；fragment 仍遵循 §2.3 禁用锚点的约定。
 
 **老项目 marker 无 `variants` 字段**（bootstrap 早于本机制）→ 该变体组标记「需补选」，决策时问用户选一个，落地后把选择写回 marker。
 
@@ -114,7 +102,7 @@
 
 ## 5. 前端依赖安装（`react-vite`）
 
-不选则整段跳过。模板（含写死版本的 `package.json` + 固化 npmmirror 源的 `.npmrc`）已随复制落到 `frontend/`。**先问用户确认**（默认 yes，给「只要文件不装依赖」选项）：
+不选则整段跳过。模板已复制到 `frontend/`，依赖范围以 `package.json` 为准，源由 `.npmrc` 指定。**先问用户确认**（默认 yes，给「只要文件不装依赖」选项）：
 
 ```bash
 cd frontend && npm install
@@ -127,7 +115,7 @@ cd frontend && npm install
 3. `command -v pre-commit >/dev/null || uv tool install pre-commit`（无 uv 时提示用户自行安装 pre-commit）
 4. `pre-commit install`
 
-**为什么不能省**：本 stack 的 `.pre-commit-config.yaml.fragment` 会在项目根落出一份配置，但配置文件本身不是门禁 —— 没跑过 `pre-commit install` 就没有 `.git/hooks/pre-commit`，那份配置一次都不会被执行。混栈项目由 §4 顺带装上了，**纯前端项目不装就等于白落一个文件**。已装过的重复跑是幂等 no-op。
+仅复制配置不等于 hook 已注册；纯前端项目也需执行上述注册步骤并核对结果。
 
 ## 6. 迁移去重（只在 normal sync 遇得到）
 

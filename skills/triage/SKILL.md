@@ -5,14 +5,6 @@ description: 盘点当前仓库的 open issue，按 priority × scope 打出一�
 
 盘点当前仓库的 open issue，按 **priority × scope** 打一张表，末尾给**一条**明确推荐 + 理由。
 
-## 为什么存在
-
-「未关闭项速览」原本由 saved query 承担（按 priority label 过滤 open issues），但它**只做过滤、不做判断** —— priority 是唯一维度，scope（多大、有没有前置依赖）完全不体现，要知道一条贵不贵得逐个点进 issue 读正文。
-
-而挑下一轮时的真实决策是 **priority × scope 的二维权衡**：一条 P0 但 XL 的，未必该排在一条 P2 但 S 的前面。这个权衡每轮都要人重做一遍。
-
-**本 skill 不取代 saved query** —— saved query 是随时扫一眼的常驻入口，本 skill 是「**要挑下一轮了**」时跑一次的决策辅助。
-
 ## 三条硬约束
 
 1. **只读、无副作用**：不改 issue、不打 label、不写任何本地文件、**不自动 `/start`**。决定权留给人。

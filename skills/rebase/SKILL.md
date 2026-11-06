@@ -30,7 +30,7 @@ description: 诊断本地分支分叉并按清单引导完成 rebase，历史保
 3. **个人分支才 rebase**：如果要被 rebase 的分支是 `master` / `main`、或是已被他人 review 的公共分支，立即停下问人类。
 4. **数据优先于直线历史**：一旦出现看不懂的状态，宁可 `git rebase --abort` + `git reset --hard <备份 tag>` 回退，也不要强行推进。
 5. **不支持交互式 rebase**：不使用 `-i`；如需合并/重排 commit，请人类手动处理。
-6. **默认静默直行，风险才停（risk gates）**：诊断方向明确且无风险时，诊断 → 备份 → rebase → FF 合并**一气呵成、不逐阶段等确认**，末尾汇报结果即可。无冲突的 rebase 本该近乎瞬间完成，不该被反复「停下 → 等 OK」拖住。**仅在命中下面这份「必停清单」时才停下、说明原因、等人类决策**：
+6. **方向明确且无风险时连续完成诊断、备份、rebase 和 FF，末尾汇报。命中以下风险才停下确认**：
    - 分叉方向不明 / 诊断看不清；
    - 当前分支就是 base（如无参时当前分支是 `master`）；
    - 要 rebase 的是 `master` / `main` 或已被他人 review 的公共分支（呼应原则 #3）；
@@ -40,7 +40,7 @@ description: 诊断本地分支分叉并按清单引导完成 rebase，历史保
    - 需**推送到远程**（`git push --force-with-lease` 或推主干）—— 高影响，即便前面全程无冲突也停一次确认，**绝不静默 force push**；
    - 出现任何看不懂 / 意外的状态。
 
-   不在清单内（诊断清楚且方向明确、工作区干净、rebase 无冲突、FF 成功）→ **直接继续，不打断人类**。注意：静默直行绝不牺牲安全 —— 原则 #4「数据优先于直线历史」不变，阶段 1 的备份 tag **无条件必打**，静默直行也不例外。
+   备份 tag 始终必打，不因无风险直行而省略。
 
 ## 阶段 0：诊断当前状态
 
@@ -70,6 +70,8 @@ description: 诊断本地分支分叉并按清单引导完成 rebase，历史保
 
 ## 阶段 1：前置检查与备份
 
+若诊断发现同一需求已被另一实现覆盖，按 `~/.coding-agent/skills/finish/references/worktree-finish.md` §8.2 的重叠实现处置确认增量和取舍，再继续；不要用机械 rebase 代替方向决策。
+
 确认方向后，执行强制项：
 
 1. **工作区必须干净**。不干净则要求人类先 `git commit` 或 `git stash`，不得直接进入下一步。
@@ -77,7 +79,7 @@ description: 诊断本地分支分叉并按清单引导完成 rebase，历史保
    - 明确告诉人类："如果 rebase 搞砸了，用 `git reset --hard <备份 tag>` 回到此刻。"
 3. 切到要被 rebase 的分支（如果 rebase 发生在 worktree 里，提醒人类 `cd` 到对应 worktree 目录）。
 
-工作区干净 → 打完备份 tag 直接进阶段 2，无需等确认；工作区不干净 → 停下（命中必停清单），要求人类先 `git commit` / `git stash`。
+完成备份后进入阶段 2。
 
 ## 阶段 2：执行 rebase 与冲突处理
 
@@ -106,8 +108,6 @@ rebase 完成后展示 `git log --graph --oneline -10` 让人类肉眼验证。*
 1. `git checkout <target-branch>`
 2. `git merge --ff-only <rebased-branch>`
 3. 若 `--ff-only` 失败，说明目标分支在 rebase 期间又有新 commit。**FF 失败属必停项**：停下告知人类，处理方式是**回到阶段 2，把 rebased-branch 继续 rebase 到最新的目标分支上**，再来一次 FF。**禁止 fallback 到普通 merge**。
-
-FF 成功则**直接继续**，不停顿。
 
 ### 推送（如需要）
 
