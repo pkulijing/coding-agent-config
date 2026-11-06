@@ -2,6 +2,10 @@
 
 只在对应任务读取相关小节，不是 Python 开发的通用必读清单。
 
+## 子进程与 CLI 环境隔离测试
+
+`subprocess(..., env=mapping)` 用该映射替换默认环境继承；Click `CliRunner` 的 env 是覆盖。表达“未设置”应显式清除目标变量，不以“不传”或空串冒充缺失。见 [Python subprocess](https://docs.python.org/3/library/subprocess.html#subprocess.Popen) 与 [Click testing API](https://click.palletsprojects.com/en/stable/api/#testing)。
+
 ## 已有文件同一性
 
 保护已有文件、防止覆盖或去重时，使用文件系统同一性判断，不能仅比较路径字符串。Python 的 [Path.samefile](https://docs.python.org/3/library/pathlib.html#pathlib.Path.samefile) 可判断已有路径是否指向同一文件；无法访问会抛异常。

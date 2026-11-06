@@ -39,11 +39,10 @@ TDD 与环境隔离要求以全局宪法“测试先行（TDD）”为准。
 - pytest 测试落 `tests/`，使用 `uv run pytest`；测试配置沿用项目模板。
 - 外部协议、坐标与单位等 fixture 使用独立真值，不复用被测代码推导输入与期望。
 - 对环境分支，在被测模块读取变量的位置显式控制条件，分别测各分支。真实网络、时钟、HOME 和缓存不是默认测试输入。
-- `subprocess(..., env=mapping)` 用该映射替换默认环境继承；Click `CliRunner` 的 env 是覆盖。表达“未设置”应显式清除目标变量，不以“不传”或空串冒充缺失。见 [Python subprocess](https://docs.python.org/3/library/subprocess.html#subprocess.Popen) 与 [Click testing API](https://click.palletsprojects.com/en/stable/api/#testing)。
 - mock 验证程序如何处理返回值，不能证明真实 SDK 接口或模型行为。按交付风险保留实际接口与主入口验证，真机前提缺失则明确记录未验证范围。
 
 ## 按场景加载
 
 - 做 wheel、registry 发布或目标机安装：读 `playbooks/python-packaging.md`。
-- 操作已有文件同一性、Rich 外部输出或 Uvicorn 长连接退出：只读 `playbooks/references/python-runtime.md` 对应小节。
+- 编写子进程或 CLI 环境隔离测试、操作已有文件同一性、Rich 外部输出或 Uvicorn 长连接退出：只读 `playbooks/references/python-runtime.md` 对应小节。
 - 做 LLM 调用：读 `playbooks/llm-app.md`。不因使用 Python 就加载 LLM、ROS 或 GPU 细则。
