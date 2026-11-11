@@ -70,7 +70,7 @@ description: 诊断本地分支分叉并按清单引导完成 rebase，历史保
 
 ## 阶段 1：前置检查与备份
 
-若诊断发现同一需求已被另一实现覆盖，按 `~/.coding-agent/skills/finish/references/worktree-finish.md` §8.2 的重叠实现处置确认增量和取舍，再继续；不要用机械 rebase 代替方向决策。
+若诊断发现同一需求已被另一实现覆盖，按 `~/.coding-agent/skills/finish/references/worktree-finish.md` §7.2 的重叠实现处置确认增量和取舍，再继续；不要用机械 rebase 代替方向决策。
 
 确认方向后，执行强制项：
 
@@ -125,6 +125,6 @@ rebase 完成后展示 `git log --graph --oneline -10` 让人类肉眼验证。*
 
 ### round 编号一致性检查（仅用 `docs/<N>-...` 轮次目录的仓库）
 
-rebase / 历史整理后目标分支可能已占用本地 round 编号，导致 docs 目录编号、`DEVTREE.md`、commit 的 `[round N]` 前缀三处脱节。**逐条核对、命中给顺延计划并要求确认、绝不静默继续** —— 五步细则见 `/finish` Step 4.5（单一真源）。
+rebase / 历史整理后目标分支可能已占用本地 round 编号，导致 docs 目录编号、`DEVTREE.md`、commit 的 `[round N]` 前缀三处脱节。**逐条核对、命中给顺延计划并要求确认、绝不静默继续** —— 五步细则见 `/finish` Step 3.5（单一真源）。
 
 纯代码仓（无 `docs/<N>-...`）→ 跳过本节。

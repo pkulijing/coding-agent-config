@@ -1,4 +1,4 @@
-# README review & update（finish Step 6 展开）
+# README review & update（finish Step 5 展开）
 
 放在 commit 之前，让 README 改动跟本轮代码进同一 commit。仅当本轮变更命中触发清单才执行；否则打印一行「README review skipped: 本轮变更不在触发清单」并跳过。
 

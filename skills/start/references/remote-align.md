@@ -50,4 +50,4 @@
 
 ① 走平台 API、②③ 走 git，**两条路互相独立**：一个挂了另一个照跑，别因为 fetch 失败就连 `state` 也不查了。
 
-本地开发后才发现重叠实现时，按 `~/.coding-agent/skills/finish/references/worktree-finish.md` §8.2 盘点双方增量、确认取舍并保留弃稿证据。
+本地开发后才发现重叠实现时，按 `~/.coding-agent/skills/finish/references/worktree-finish.md` §7.2 盘点双方增量、确认取舍并保留弃稿证据。

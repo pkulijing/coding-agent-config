@@ -45,7 +45,7 @@ description: 把 coding-agent-config 仓库管理的"跨项目共享开发配置
 
 1. 读文件，分出 **open 项**（`## P0/P1/P2` 段，每行本就带云端 issue 链接）与**「刻意不做」项**（`## 已完成 / 不再追踪` 段，每条带原因）。
 2. **open 项**：逐条核对链接指向的 issue 仍 open（`python3 $HOME/.coding-agent/scripts/platform_issue.py issue-view <N>`）。都在 → 无需动作（云端已是真源，删文件不丢信息）。某行**没有** issue 链接（极老的裸文本条目）→ 提示用户先 `/backlog` 补成云端 issue 再继续。
-3. **「刻意不做」项** → 按 `/finish` Step 2 的同一手法归档为带 `wontfix` 的 closed issue（body 保留原因文字）。
+3. **「刻意不做」项** → 列出尚未归档的条目及原有原因，请用户明确是否手动归档；未经决定先保留源文件，不删除唯一记录。用户确认后通过 `/backlog` 或 `~/.coding-agent/scripts/platform_issue.py` 归档为带 `wontfix` 及三轴标签的 closed issue，body 保留原因与来源；使用已有 issue 时补充并核对归档结果，不重复创建。helper 契约见 `~/.coding-agent/scripts/platform_issue.md`。归档未完成或信息未保全时暂停本次迁移，不继续删除 BACKLOG。
 4. `git rm docs/BACKLOG.md`，告知用户：open 项速览改用 saved query，刻意不做项已归档为 wontfix closed issue。
 5. 继续下面的模式判断，把本轮 sync 正常跑完（文件删除会一并进本轮收尾 diff）。
 

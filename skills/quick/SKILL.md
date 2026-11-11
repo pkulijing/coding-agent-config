@@ -50,7 +50,7 @@ args 可含以下项（三者正交、可任意组合），解析后剩余文字
 
 调用 `/commit` 提交（继承其 lint 门禁 / semantic commit message / Co-authored-by trailer，单一真源不重复实现）：
 
-- **若解析出 `#N`**：把 `Closes #N` 作为额外上下文传给 `/commit`，让 message body 自然包含（不嵌入 title）。**关多个 issue 时每个 `#N` 各占一行、各带 `Closes` 关键字**（`Closes #13` / `Closes #20` / …），**绝不写成 `Closes #13 #20`** —— 这条硬规则连同它的代价，单一真源在 `~/.coding-agent/skills/finish/SKILL.md` Step 4。
+- **若解析出 `#N`**：把 `Closes #N` 作为额外上下文传给 `/commit`，让 message body 自然包含（不嵌入 title）。**关多个 issue 时每个 `#N` 各占一行、各带 `Closes` 关键字**（`Closes #13` / `Closes #20` / …），**绝不写成 `Closes #13 #20`** —— 这条硬规则连同它的代价，单一真源在 `~/.coding-agent/skills/finish/SKILL.md` Step 3。
 - **`[round N]` 前缀天然不加**：`/quick` 默认既不建 `round<N>` 分支、也不建 `docs/<N>-*/` 目录 → `/commit` 的两路轮次探测都判不出 N → 走普通 commit、不加前缀。**这是预期行为**（简易流本就不进轮次追踪），无需干预。
 
 ## Step 4：轻量收尾提示
@@ -70,5 +70,5 @@ args 可含以下项（三者正交、可任意组合），解析后剩余文字
 - 不做跨项目可沉淀流程反思、不向 coding-agent-config 提 issue
 - 不调 `/devtree`
 - 不做 README review & update
-- 不主动做 issue 生命周期管理（`/finish` 那套「关联并关闭 issue」——「刻意不做」归档为 `wontfix` closed issue 等）；`/quick` 只在你显式传 `#<issue>` 时顺手在 commit 带 `Closes #N`，不替你去改 issue 状态
+- 不主动做 issue 生命周期管理；`/quick` 只在你显式传 `#<issue>` 时顺手在 commit 带 `Closes #N`，不替你去改 issue 状态
 - 不做 worktree 收尾（rebase / FF merge / 清理 worktree·分支·tag）
