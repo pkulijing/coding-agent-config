@@ -45,3 +45,9 @@
 - `git diff --check`、`python3 scripts/context_budget.py check-refs`、finish 的 `quick_validate.py` 通过。无新增运行代码，闸 A 为 N/A，lint 入口限制与首个交付相同。
 
 结论：追加交付 review clean，可提交。当前开发请求不触发本轮 finish；后续调用 finish 时默认清理按用户要求执行。
+
+## 收尾文档检查
+
+用户确认第65轮归入“开发项收尾”并合入本地 master；本轮对象按默认规则清理，不推送。收尾变更仅含 SUMMARY、PLAN、REVIEW 与 DEVTREE，README 已覆盖最终行为，无需重复修改。
+
+按起始 review-loop Step 2 的普通 docs 变更判据跳过编队；实现部分的两次五角度独立审查仍有效。开发树从确认后的 Epic 结构完整重建，复用旧索引的类型与描述，新增第65轮；`git diff --check` 与路径引用检查通过，另核对图、索引、Epic 的轮次集合一致。运行测试与 lint 均 N/A。
