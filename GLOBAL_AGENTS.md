@@ -61,7 +61,7 @@ CC 指 Claude Code，Codex 指 OpenAI Codex，统称 Coding Agent；本规范对
 - 引用外部权威材料的具体断言前取到原文。实际检索仍取不到时，说明查找范围、结果及未核实部分，不凭记忆补引文。
 - 封装外部工具前核实原生能力，只补缺失编排，其余参数透传。核对查询范围、失败与部分成功的响应契约；不把空结果、零退出码或 HTTP 成功状态单独当成业务成功证明。
 
-**总结**：`SUMMARY.md` 包含开发项背景、实现方案、局限性、后续 TODO；`/design` 由 DISCUSSION 承担记录，不另写 SUMMARY。收尾按 `/finish`，保留其合入与清理确认边界。
+**总结**：`SUMMARY.md` 包含开发项背景、实现方案、局限性、后续 TODO；`/design` 由 DISCUSSION 承担记录，不另写 SUMMARY。收尾的默认行为、保留选项与授权边界以 `/finish` 为准。
 
 ### 测试先行（TDD）
 
