@@ -41,7 +41,7 @@ description: 开始一个新的开发项：创建文档目录，撰写 PROMPT.md
 5. 在 `docs/` 下创建开发项文件夹 `docs/<N>-<中文描述>/`（worktree 模式下落在新 worktree 内）。
 6. 基于参数撰写 `PROMPT.md`（两个分支具体行为见下）。
 7. 撰写 `PLAN.md` 并请用户确认（CC 可进入计划模式；Codex 直接写计划并在对话中等待确认，无需模式切换工具） —— 见下方「PLAN 撰写：外部行为断言先实证」小节。
-8. 用户确认后再开始写代码。
+8. 用户确认后再开始写代码。Codex 在开始实施时更新当前会话标题：先检查 `~/.coding-agent/scripts/codex_session_title.py` 可读、`uv` 可用且 `uv run --script <脚本路径> --help` 可执行，再运行 `uv run --script <脚本路径> start --round <N> --description '<本轮中文描述>'`，标题为 `r<N>-<中文描述>`。描述按 shell 参数正确转义；非 Codex 不调用。脚本使用 `CODEX_THREAD_ID` 定位当前会话；调用失败明确报告，不阻断已确认的开发，不改聊天记录兜底。仅生成计划、尚未确认时不改名。
 
 #### PLAN 撰写：外部行为断言先实证（通用流程第 7 步展开）
 
