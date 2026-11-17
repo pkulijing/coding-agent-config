@@ -5,7 +5,6 @@
 ## 1. 环境与工具
 
 - 使用 npm，默认源为 npmmirror；Biome 负责格式与 lint，TypeScript strict。具体参数和依赖范围以 `templates/react-vite/__subpath__/` 的配置为准，不在本文另存版本基线。
-- 从前端工作目录执行项目的 `npm run lint`、`npm run typecheck`、`npm run build`；多 workspace 按各自脚本验证。
 - 模板使用纯 JSON 的 `biome.json`；如需注释，采用 Biome 支持的 `biome.jsonc`，不要添加伪注释键。配置发现方式见 [Biome 配置](https://biomejs.dev/configuration/configure-biome/)。
 - worktree 的依赖准备和临时软链清理按 `skills/start/references/worktree-create.md`，运行门禁前确认依赖可用。
 
@@ -29,4 +28,4 @@
 
 组件与纯逻辑测试可用 Vitest + Testing Library，遵循全局 TDD 契约；引入时补齐配置与 test 脚本。编排型页面至少有一条 happy-path 渲染冒烟。
 
-运行项目类型检查、lint 和构建；交互改动检查实际页面。资源组件应覆盖重复挂载/卸载和加载途中退出，功能测试与截图不能替代生命周期验证。
+从前端工作目录执行项目的 `npm run lint`、`npm run typecheck`、`npm run build`；多 workspace 按各自脚本验证。交互改动检查实际页面。资源组件应覆盖重复挂载/卸载和加载途中退出，功能测试与截图不能替代生命周期验证。
