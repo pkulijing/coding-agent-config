@@ -36,7 +36,7 @@ Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`
 | [backlog](skills/backlog/SKILL.md)、[triage](skills/triage/SKILL.md) | 创建 issue、只读盘点与排序 |
 | [start](skills/start/SKILL.md)、[finish](skills/finish/SKILL.md) | 开轮计划与开发收尾 |
 | [design](skills/design/SKILL.md) | 主题工作树中的方案讨论与归档 |
-| [quick](skills/quick/SKILL.md) | 不建开发文档的小改，自动提交 |
+| [quick](skills/quick/SKILL.md) | 不建开发文档的小改，自动提交；`--worktree` 隔离工作区 |
 | [commit](skills/commit/SKILL.md)、[review-loop](skills/review-loop/SKILL.md) | 提交、独立审查与修复迭代 |
 | [rebase](skills/rebase/SKILL.md)、[pybump](skills/pybump/SKILL.md) | 直线历史整理、Python 版本发布准备 |
 | [bootstrap](skills/bootstrap/SKILL.md)、[sync-project-config](skills/sync-project-config/SKILL.md) | 新项目初始化、已有项目模板同步与接入 |
@@ -71,7 +71,7 @@ review 规格以技能与 [Codex 角色配置](agents/codex-review.toml) 为准�
 | routine-dev（每周一/三/五） | 目标明确的 issue 按优先级与关联关系组批，Agent 自主实现、验证、review，提交主题 PR 等人工合入 |
 | routine-slim（每周日） | 有界盘点现有指令，一次处理 1–3 个有价值目标；允许普通规则退役，没有候选就退出，不再要求增长超过 15% |
 
-两者都排除在途 PR 涉及的文件，保留各自白黑名单；远端写操作仅新分支、PR 和该 PR 描述，不改标签/评论、不强推、不触发合入。routine-slim 不能改自身、另一 routine、全局/项目入口、角色配置或执行脚本，也不能借删减撤掉权限与工作流能力。准确范围见两份技能与 [项目约束](AGENTS.md)。
+两者都在独立 worktree 中执行，复用 Quick 的轻量隔离规则，不切换或清理主 checkout；PR 成功后清理已保全的干净工作树，失败保留成果与恢复路径。两者都排除在途 PR 涉及的文件，保留各自白黑名单；远端写操作仅新分支、PR 和该 PR 描述，不改标签/评论、不强推、不触发合入。routine-slim 不能改自身、另一 routine、全局/项目入口、角色配置或执行脚本，也不能借删减撤掉权限与工作流能力。准确范围见两份技能与 [项目约束](AGENTS.md)。
 
 修改 review 规则的任务按起始版本检查自身。routine 的规则禁令不等于凭据隔离，owner 凭据不能区分人和 Agent。
 

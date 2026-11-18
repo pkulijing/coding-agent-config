@@ -1,6 +1,6 @@
 ---
 name: quick
-description: 轻量开发流：不落 docs / 不开 worktree / 不进计划模式，直接改代码后自动 /commit 收尾。适合「小函数改一下、说清楚即可」的小改；要文档追踪或计划讨论请走 /start
+description: 轻量开发流：不落 docs / 不进计划模式，可用 --worktree 隔离开发，直接改代码后自动 /commit 收尾。适合「小函数改一下、说清楚即可」的小改；要文档追踪或计划讨论请走 /start
 ---
 
 用户调用此 skill 表示要走**轻量开发流**：一个很小的需求（如改一个小函数、修个笔误、调一处配置），不值得引入 `/start` + `/finish` 的重量级文档三件套，只要在 commit message 里把「改了啥、为什么」说清楚即可。
@@ -18,8 +18,9 @@ description: 轻量开发流：不落 docs / 不开 worktree / 不进计划模�
 
 ## 参数解析
 
-args 可含以下项（三者正交、可任意组合），解析后剩余文字即本次小改动的需求描述：
+args 可含以下项（`--worktree` 已包含独立分支，不能与 `--branch` 重复创建），解析后剩余文字即本次小改动的需求描述：
 
+- **`--worktree`**：按 [轻量 worktree](references/worktree.md) 建独立工作树和 `codex/quick/<ascii 短描述>` 分支；不建开发文档，提交后保留工作树与分支供审阅。
 - **`--branch`**：切一个轻量分支 `codex/quick/<ascii 短描述>`（**不建 worktree**），改完 commit 留在该分支等用户手动合 / 提 PR。默认不带 = 在当前分支直接改。
 - **`#<issue 号>` 或 issue URL**：两层用途——① **拉 issue 详情用于理解本次要改什么**，进工作上下文指导改动（这样你传 `#N` 就不必再口述一遍需求）；② issue 号进收尾 commit 的 `Closes #N`。**详情只进上下文、不落成 PROMPT.md 文档**（简易流不留档，这正是它与 `/start <issue#>` 的关键区别）；可传多个。
 - **剩余文字**：需求描述。
@@ -28,7 +29,9 @@ args 可含以下项（三者正交、可任意组合），解析后剩余文字
 
 无描述**且**未传 `#N`（即既无口述需求、又无 issue 可拉）且无法从对话上下文推断要改什么 → 追问用户改什么，拿到后再继续。
 
-## Step 1：（可选）切轻量分支
+## Step 1：（可选）隔离工作区
+
+**args 含 `--worktree`**：先执行 [轻量 worktree](references/worktree.md) 的创建流程，再在返回的真实路径内执行后续步骤；跳过下方 `--branch` 和默认分支路径。
 
 **仅当 args 含 `--branch`**：
 
@@ -57,6 +60,7 @@ args 可含以下项（三者正交、可任意组合），解析后剩余文字
 
 打印一行收尾提示，按分支策略分岔：
 
+- **`--worktree`**：输出项目内入口、真实路径、分支与提交；保留供审阅，不自动合入或推送。
 - **`--branch`**：「改动已提交到 `codex/quick/<ascii 短描述>` 分支，review 后自行 merge / 提 PR。」
 - **默认**：「已提交到当前分支 `<分支名>`，是否 `git push` 由你决定。」（与全局不自动 push 的约定一致。）
 
@@ -71,4 +75,4 @@ args 可含以下项（三者正交、可任意组合），解析后剩余文字
 - 不调 `/devtree`
 - 不做 README review & update
 - 不主动做 issue 生命周期管理；`/quick` 只在你显式传 `#<issue>` 时顺手在 commit 带 `Closes #N`，不替你去改 issue 状态
-- 不做 worktree 收尾（rebase / FF merge / 清理 worktree·分支·tag）
+- 不自动 rebase / FF merge；`--worktree` 的保留与显式清理按 [轻量 worktree](references/worktree.md)。
