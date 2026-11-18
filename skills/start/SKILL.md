@@ -1,6 +1,6 @@
 ---
 name: start
-description: 开始一个新的开发项：创建文档目录，撰写 PROMPT.md 和 PLAN.md，确认后再开始写代码
+description: 开始一个新的开发项：创建文档目录，撰写 PROMPT.md 和 PLAN.md，目标明确时直接实施
 ---
 
 用户调用此 skill 表示要开始一个新的开发项。
@@ -20,7 +20,7 @@ description: 开始一个新的开发项：创建文档目录，撰写 PROMPT.md
 
 **`--no-worktree` 开关**：args 中可附带 `--no-worktree`（与 issue# ／自由描述正交，可与二者同时出现）。默认每轮在独立 git worktree 内开发；带此开关则跳过 worktree 创建、在当前分支直接干。解析需求内容前先把 `--no-worktree` 从 args 中剔除。适用场景：轻量改动 / 探索性 round / 不值得单开 worktree 的小修复。
 
-按照全局 AGENTS.md 中的开发模式，严格遵循「执行前必须先完成 PROMPT.md 和 PLAN.md 的撰写并确认，再开始写代码」：
+按照全局 AGENTS.md 中的开发模式，实施前先完成 PROMPT.md 和 PLAN.md：
 
 ### 通用流程
 
@@ -40,8 +40,8 @@ description: 开始一个新的开发项：创建文档目录，撰写 PROMPT.md
 4. **创建 worktree**（默认；带 `--no-worktree` 时跳过本步）—— **读 `references/worktree-create.md`** 按其执行（含 Codex 托管创建后建立项目内软链接入口）。项目内入口名为 `round<N>-<英文短描述>`，分支同名（Codex 加 `codex/` 前缀），且**整串纯 ASCII**；**建之前必须复核这个 N 没被本地或远端占走**，占了就重算 N，别靠换个描述词绕开。
 5. 在 `docs/` 下创建开发项文件夹 `docs/<N>-<中文描述>/`（worktree 模式下落在新 worktree 内）。
 6. 基于参数撰写 `PROMPT.md`（两个分支具体行为见下）。
-7. 撰写 `PLAN.md` 并请用户确认（CC 可进入计划模式；Codex 直接写计划并在对话中等待确认，无需模式切换工具） —— 见下方「PLAN 撰写：外部行为断言先实证」小节。
-8. 用户确认后再开始写代码。Codex 在开始实施时更新当前会话标题：先检查 `~/.coding-agent/scripts/codex_session_title.py` 可读、`uv` 可用且 `uv run --script <脚本路径> --help` 可执行，再运行 `uv run --script <脚本路径> start --round <N> --description '<本轮中文描述>'`，标题为 `r<N>-<中文描述>`。描述按 shell 参数正确转义；非 Codex 不调用。脚本使用 `CODEX_THREAD_ID` 定位当前会话；调用失败明确报告，不阻断已确认的开发，不改聊天记录兜底。仅生成计划、尚未确认时不改名。
+7. 撰写 `PLAN.md`（见下方「PLAN 撰写：外部行为断言先实证」）。目标、范围和验收明确时继续实施；需要用户决定方向或补齐不可查的关键信息时集中询问。用户要求先审计划或当前处于计划模式时，在实施前停下。
+8. 进入实施时，Codex 更新当前会话标题：先检查 `~/.coding-agent/scripts/codex_session_title.py` 可读、`uv` 可用且 `uv run --script <脚本路径> --help` 可执行，再运行 `uv run --script <脚本路径> start --round <N> --description '<本轮中文描述>'`，标题为 `r<N>-<中文描述>`。描述按 shell 参数正确转义；非 Codex 不调用。脚本使用 `CODEX_THREAD_ID` 定位当前会话；调用失败明确报告，不阻断开发，不改聊天记录兜底。仅生成计划时不改名。
 
 #### PLAN 撰写：外部行为断言先实证（通用流程第 7 步展开）
 

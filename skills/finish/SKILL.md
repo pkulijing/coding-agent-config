@@ -3,11 +3,11 @@ name: finish
 description: 完成当前开发项：撰写 SUMMARY.md、更新开发树与相关 README、关联 issue、提交并收尾 worktree。发现有具体跨项目价值的候选时，经确认提 issue。
 ---
 
-用户调用此 skill 表示当前开发项已完成，并默认授权清理本轮 worktree、本地开发分支及本轮 backup tag；无需再询问是否清理。明确要求保留的对象除外，未合入成果与未保全资产仍按收尾细则保护。
+用户调用此 skill 表示当前开发项已完成，并默认授权在本地将本轮 FF 合入主分支，以及清理本轮 worktree、本地开发分支及本轮 backup tag；核验通过后连续完成。明确要求保留的对象除外，未合入成果与未保全资产仍按收尾细则保护。
 
 **参数处理**：先解析下列**收尾开关**及明确的保留指令（如“不要清理”等同 `--no-cleanup`），再将剩余 args 当作用户对本次开发的额外说明（撰写 SUMMARY.md 时融入「局限性」「后续 TODO」「关键设计」等章节；无剩余则按常规总结）。用户最新明确的保留要求优先于默认清理。
 
-**收尾开关**（控制 Step 7，可组合；不带任何开关时，目标为 rebase + FF merge + 默认清理 worktree、分支与 backup tag；合入与 push 仍按各自授权边界执行）：
+**收尾开关**（控制 Step 7，可组合；不带任何开关时，目标为 rebase + FF merge + 默认清理 worktree、分支与 backup tag；远端 push 须另有授权）：
 
 | 调用 | 7.2 rebase + 备份 tag | 7.3 FF merge | 删 worktree | 删分支 | 删 backup tag |
 | --- | --- | --- | --- | --- | --- |
@@ -129,7 +129,7 @@ Closes #20
 ```
 
 - **不在 worktree**（含 `--no-worktree` 轮）→ 打印一行「non-worktree round，跳过 worktree 收尾」，直接进 Step 8。
-- **在 worktree** → **读 `references/worktree-finish.md`** 按其 7.1–7.5 执行（诊断 / 备份 + rebase / FF merge / 默认清理 / 不自动 push），各开关的跳过分支以上方对照表为准。已有明确授权在原对象、动作和范围内持续有效；默认清理无需另取授权，无新冲突或风险时连续完成，不重复询问。
+- **在 worktree** → **读 `references/worktree-finish.md`** 按其 7.1–7.5 执行（诊断 / 备份 + rebase / FF merge / 默认清理 / 不自动 push），各开关的跳过分支以上方对照表为准。已有授权与明确的跳过、保留指令按其范围执行。
 
 ## Step 8 · 交付说明与轻量提示
 
