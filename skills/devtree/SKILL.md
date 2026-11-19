@@ -1,7 +1,9 @@
 ---
 name: devtree
-description: 依据 docs/DEVTREE.md 中作者维护的 Epic 结构，重新生成可视化图表和节点索引
+description: （已冻结）依据 docs/DEVTREE.md 的 Epic 结构重新生成可视化与索引；仅用于存量修复，不再是开发流程的一环
 ---
+
+> **已冻结（第 69 轮，见 [ADR 0001](../../docs/adr/0001-文档产出闭集.md)）**：`/finish` 不再调用本技能，`/bootstrap` 不再生成开发树，新轮次不登记 Epic。`docs/DEVTREE.md` 保持第 69 轮状态不再更新；只有用户明确要求修复存量开发树时才运行。开发历史的现成入口改为 `git log` 与 issue 列表。
 
 用户调用此 skill 表示要刷新「可视化」和「节点索引」两个区块（含同步本轮开发项的 Epic 归属）。
 

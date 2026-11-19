@@ -3,14 +3,14 @@ name: quick
 description: 轻量开发流：不落 docs / 不进计划模式，可用 --worktree 隔离开发，直接改代码后自动 /commit 收尾。适合「小函数改一下、说清楚即可」的小改；要文档追踪或计划讨论请走 /start
 ---
 
-用户调用此 skill 表示要走**轻量开发流**：一个很小的需求（如改一个小函数、修个笔误、调一处配置），不值得引入 `/start` + `/finish` 的重量级文档三件套，只要在 commit message 里把「改了啥、为什么」说清楚即可。
+用户调用此 skill 表示要走**轻量开发流**：一个很小的需求（如改一个小函数、修个笔误、调一处配置），不值得引入 `/start` + `/finish` 的轮次记录与收尾流程，只要在 commit message 里把「改了啥、为什么」说清楚即可。
 
 ## 前置判断：这个需求真的适合 `/quick` 吗
 
 `/quick` 只服务「一眼能说清、改动局部、无需追踪」的小改。命中以下任一信号，**先停下反问用户「是否该走正规 `/start`」**，而不是硬用 quick：
 
 - 需求需要进计划模式讨论方案、或方案本身有分歧要先对齐（需求本身都还模糊的，走 `/design`）；
-- 需要落 PROMPT/PLAN 供未来追踪，或值得在开发树（`docs/DEVTREE.md`）记一个 Epic 节点；
+- 需要落轮次记录 `docs/<N>-*.md` 供未来追踪，或需要挂到某条 issue 上；
 - 涉及多文件的架构改动、跨模块重构；
 - 对应一个需要长期追踪的 issue（长期可追踪的开发项推荐 `/backlog` + `/start <issue#>`）。
 
@@ -22,7 +22,7 @@ args 可含以下项（`--worktree` 已包含独立分支，不能与 `--branch`
 
 - **`--worktree`**：按 [轻量 worktree](references/worktree.md) 建独立工作树和 `codex/quick/<ascii 短描述>` 分支；不建开发文档，提交后保留工作树与分支供审阅。
 - **`--branch`**：切一个轻量分支 `codex/quick/<ascii 短描述>`（**不建 worktree**），改完 commit 留在该分支等用户手动合 / 提 PR。默认不带 = 在当前分支直接改。
-- **`#<issue 号>` 或 issue URL**：两层用途——① **拉 issue 详情用于理解本次要改什么**，进工作上下文指导改动（这样你传 `#N` 就不必再口述一遍需求）；② issue 号进收尾 commit 的 `Closes #N`。**详情只进上下文、不落成 PROMPT.md 文档**（简易流不留档，这正是它与 `/start <issue#>` 的关键区别）；可传多个。
+- **`#<issue 号>` 或 issue URL**：两层用途——① **拉 issue 详情用于理解本次要改什么**，进工作上下文指导改动（这样你传 `#N` 就不必再口述一遍需求）；② issue 号进收尾 commit 的 `Closes #N`。**详情只进上下文、不落成文档**（简易流不留档；`/start <issue#>` 也只多一份 ≤15 行轮次记录）；可传多个。
 - **剩余文字**：需求描述。
 
 **拉 issue 详情**（仅当传了 `#N` / URL）：走 helper `python3 $HOME/.coding-agent/scripts/platform_issue.py issue-view <N>`（按 `git remote get-url origin` 自动判定 GitHub / GitLab），从返回的 `title` / `body` 理解要改什么。传多个则逐个拉。URL 形态先从中提取 N。
@@ -54,7 +54,7 @@ args 可含以下项（`--worktree` 已包含独立分支，不能与 `--branch`
 调用 `/commit` 提交（继承其 lint 门禁 / semantic commit message / Co-authored-by trailer，单一真源不重复实现）：
 
 - **若解析出 `#N`**：把 `Closes #N` 作为额外上下文传给 `/commit`，让 message body 自然包含（不嵌入 title）。**关多个 issue 时每个 `#N` 各占一行、各带 `Closes` 关键字**（`Closes #13` / `Closes #20` / …），**绝不写成 `Closes #13 #20`** —— 这条硬规则连同它的代价，单一真源在 `~/.coding-agent/skills/finish/SKILL.md` Step 3。
-- **`[round N]` 前缀天然不加**：`/quick` 默认既不建 `round<N>` 分支、也不建 `docs/<N>-*/` 目录 → `/commit` 的两路轮次探测都判不出 N → 走普通 commit、不加前缀。**这是预期行为**（简易流本就不进轮次追踪），无需干预。
+- **`[round N]` 前缀天然不加**：`/quick` 默认既不建 `round<N>` 分支、也不建 `docs/<N>-*.md` 轮次记录 → `/commit` 的两路轮次探测都判不出 N → 走普通 commit、不加前缀。**这是预期行为**（简易流本就不进轮次追踪），无需干预。
 
 ## Step 4：轻量收尾提示
 
@@ -64,15 +64,15 @@ args 可含以下项（`--worktree` 已包含独立分支，不能与 `--branch`
 - **`--branch`**：「改动已提交到 `codex/quick/<ascii 短描述>` 分支，review 后自行 merge / 提 PR。」
 - **默认**：「已提交到当前分支 `<分支名>`，是否 `git push` 由你决定。」（与全局不自动 push 的约定一致。）
 
-统一附一句：「如果这个改动其实需要文档追踪 / 计划讨论 / 开发树记节点，下次走 `/start`。」
+统一附一句：「如果这个改动其实需要轮次记录或方案讨论，下次走 `/start` 或 `/design`。」
 
 ## 明确不做（与 `/finish` 的边界）
 
 `/quick` **一概不碰**以下重流程独有的仪式 —— 要这些就走正规 `/start` + `/finish`：
 
-- 不写 SUMMARY.md
+- 不写轮次记录与 ADR
 - 不做跨项目可沉淀流程反思、不向 coding-agent-config 提 issue
-- 不调 `/devtree`
+- 不调 `/devtree`（已冻结）
 - 不做 README review & update
 - 不主动做 issue 生命周期管理；`/quick` 只在你显式传 `#<issue>` 时顺手在 commit 带 `Closes #N`，不替你去改 issue 状态
 - 不自动 rebase / FF merge；`--worktree` 的保留与显式清理按 [轻量 worktree](references/worktree.md)。

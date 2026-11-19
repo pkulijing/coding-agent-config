@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: 为空项目搭建文档骨架（README.md / AGENTS.md / DEVTREE.md），仅在项目首次开发前调用一次
+description: 为空项目搭建文档骨架（README.md / AGENTS.md），仅在项目首次开发前调用一次
 ---
 
 用户调用此 skill 表示要为一个**全新空项目**搭建文档骨架。一次性脚手架，**不**用于已有 `docs/` 历史的项目 —— 那种走 `/sync-project-config` 的 adopt 模式。
@@ -10,7 +10,7 @@ description: 为空项目搭建文档骨架（README.md / AGENTS.md / DEVTREE.md
 命中任一就立即停止并报告，**不要尝试覆盖已有内容**：
 
 - `docs/` 下已有 `N-` 数字前缀的开发轮次目录 → 「项目已初始化（检测到 docs/N-xxx），不应运行 bootstrap。」
-- `AGENTS.md`、`CLAUDE.md` 或 `DEVTREE.md` 已存在 → 「项目已有规则或文档，请运行 `/sync-project-config` 迁移 / 同步；不要重置或覆盖原文件。」
+- `AGENTS.md` 或 `CLAUDE.md` 已存在 → 「项目已有规则或文档，请运行 `/sync-project-config` 迁移 / 同步；不要重置或覆盖原文件。」
 
 ## 信息收集
 
@@ -35,7 +35,7 @@ args 非空时可作为问题 1 或 2 的输入；不足部分仍需问全。
 
 ## 开发流程
 
-本项目遵循 [全局 Constitution](https://github.com/pkulijing/coding-agent-config/blob/master/GLOBAL_AGENTS.md) 中定义的「需求 - 计划 - 执行 - 总结」四步开发模式，文档记录见 `docs/`。
+本项目遵循 [全局 Constitution](https://github.com/pkulijing/coding-agent-config/blob/master/GLOBAL_AGENTS.md) 中定义的「需求—实施—验收」流程：每轮在 `docs/<N>-<中文描述>.md` 留一份 ≤15 行轮次记录（来源与完成标准），高代价决策另记 `docs/adr/`。
 ```
 
 ## Step 2 · 写 AGENTS.md 与兼容入口
@@ -118,16 +118,16 @@ stacks:
 
 上例是「后端 + 前端」并存形态；只选其一就只写那一条；一个都没选则写 `stacks: []` 并在**顶层**加 `skipped: []`。`source` 取不到 origin 时填占位符 `https://github.com/<owner>/coding-agent-config`，并在收尾提示用户补全。
 
-## Step 4 · 调用 `/devtree` 落 DEVTREE.md 骨架
+## Step 4 · 不生成开发树
 
-直接调用 `/devtree` —— 它自身已支持冷启动，`docs/DEVTREE.md` 不存在或 Epic 结构为空时会写入完整骨架。**不要**在本 skill 里复制一份骨架模板，单一真源在 `/devtree`。
+开发树范式已退役（见 coding-agent-config 的 ADR 0001）：本项目**不建 `docs/DEVTREE.md`**，也不调用 `/devtree`。开发历史由 `git log` 与 issue 承担，不再引入第三种索引。
 
 ## Step 5 · 收尾反馈
 
-echo-back 新建文件的路径（`README.md`、`AGENTS.md`、`CLAUDE.md`、`docs/DEVTREE.md`，以及 Step 3 未跳过时的模板文件清单 + `.agent-template.yml`），跳过的项注明原因。然后给下一步建议：
+echo-back 新建文件的路径（`README.md`、`AGENTS.md`、`CLAUDE.md`，以及 Step 3 未跳过时的模板文件清单 + `.agent-template.yml`），跳过的项注明原因。然后给下一步建议：
 
 1. 补完 `README.md` 与 `AGENTS.md` 的「待补充」段
-2. 在 `DEVTREE.md` 的「Epic 结构」区块下添加首批叶 Epic
+2. 需求已经明确的：直接运行 `/backlog` 登记，再用 `/start <issue#>` 开第一轮
 3. 已跑 3.5 的：项目已可 `uv run pytest` / `git commit`，可选跑 `pre-commit run --all-files` 验证（首次接入易出 finding）。已跑 3.5b 的：`frontend/` 已可 `npm run dev` / `npm run build`
 4. 3.5 被用户跳过的：未来可手动跑 `uv init --package && uv add --dev pytest pytest-cov ruff && uv tool install pre-commit && pre-commit install`，或重跑 `/sync-project-config` 走 adopt
 5. Step 3 整段跳过 / 选了非 python stack 的：未来可运行 `/sync-project-config` 走 adopt 补全

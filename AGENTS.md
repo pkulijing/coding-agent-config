@@ -17,7 +17,7 @@
 | `user.config.example.env` | 配置示例；真实值在仓库外 `~/.coding-agent/config.env`，迁移保留原件、用户值优先 |
 | `uv.config.base.toml` | 仅在用户 uv 配置缺失时初始化 |
 | `scheduler/` | 自动同步，任务名 coding-agent-config，状态和日志在 `~/.coding-agent/` |
-| `.worktrees/`、`docs/` | 隔离开发工作树与中文开发记录 |
+| `.worktrees/`、`docs/` | 隔离开发工作树、轮次记录与 ADR |
 
 ## 开发约束
 
@@ -38,7 +38,7 @@
 | routine | 任务 | 不可扩大之处 |
 | --- | --- | --- |
 | routine-dev（每周一/三/五） | 按优先级选目标明确的 issue，相关需求组批，自主选实现与验证方案，最多尝试三个批次，一批一个待人工合入的 PR | 禁止开发 `status:discussion` 或正文目标未收敛项；禁止触及 `skills/routine-dev/**`、`agents/**`、`install.sh`、`.github/**`；其他落点仍受其允许列表约束 |
-| routine-slim（每周日） | 有界盘点现有指令，删除重复、收窄作用域或退役不再必要的普通规则，一次 1–3 文件 | 只读仓库材料；可改范围仍是 `skills/*/SKILL.md`、`skills/*/references/*.md`、`playbooks/*.md`；宪法和项目入口只报告；禁止触及自身、routine-dev、agents、.github、install.sh、scripts、hooks、templates、docs；不能退役个人偏好、安全边界或工作流能力 |
+| routine-slim（每周日） | 有界盘点现有指令，删除重复、收窄作用域或退役不再必要的普通规则，一次 1–3 文件 | 只读仓库材料；可改范围仍是 `skills/*/SKILL.md`、`skills/*/references/*.md`、`playbooks/*.md`；宪法和项目入口只报告；禁止触及自身、routine-dev、agents、.github、install.sh、scripts、hooks、templates、docs；不得退役个人偏好、安全边界与审查强度；可收缩技能内的文档仪式与默认产出（含 `/start`、`/finish` 的必写项），与宪法冲突的只报告 |
 
 两者均排除所有 open PR 涉及的文件；列不全则不继续。只允许推送新分支、创建 PR、编辑该 PR 描述，不写标签/评论、不强推、不触发合入。失败清理只处理本次明确归属的成果，保留已完成成员并重新验证，不能清掉他人工作。
 

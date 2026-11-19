@@ -7,7 +7,7 @@ description: 按照 git 规则自动分析变更并提交代码
 
 **提交粒度**：以可独立审阅、回退和说明目的的交付单元提交。独立功能、修复、隔开的交付、必要部署与验收记录可分别提交；同一次可连续完成的收尾先汇齐适用文档，不把“已获授权”“准备合入”等对话状态各做一次提交。影响判断的新事实、已发布或被引用的记录、审计与恢复点可独立保留，不机械限制一轮提交数。优先避免产生新碎片；普通提交不因此自动 amend、squash 或改写已发布/共享历史，历史整理仍须核对范围、备份与授权。
 
-**design 归档入口**：仅由 `/design` 明确传入主题路径、允许文件清单、归档 SHA（首次为无）及发布/引用核查结论时，先读 `~/.coding-agent/skills/design/references/git-lifecycle.md` §2–§3。执行下方同一套 review 与 lint，但第 8 步只暂存允许文件，并在第 9 步按已验证的首次创建 / 同主题 HEAD amend 选择操作；归档不带 round 前缀，message 保留 `Design-Topic` 和实际执行 Agent 署名。改写前再次核对 HEAD、完整 index、提交全部路径及授权条件；非 HEAD、混合范围、已发布或共享历史没有相应授权就停下保全，不退回新增主题提交。普通 `/commit` 未带上述上下文时仍默认新增提交；若当前为 design 主题分支或变更为已有主题文档，先核对主题归档策略，不能靠直接调用普通入口绕过单提交规则。
+**design 文档**：`/design` 产出的 `docs/design/<主题>.md` 按普通提交流程处理，**不带 `[round N]` 前缀**，message body 可带 `Design-Topic: <主题>`；默认新增提交，不 amend、不改写已发布历史。
 
 1. 运行 `git status` 查看当前变更状态
 2. 运行 `git diff` 查看具体变更内容（包括已暂存和未暂存的）
@@ -20,24 +20,26 @@ description: 按照 git 规则自动分析变更并提交代码
      - Node.js: `package.json` 里有 `scripts.lint` → `npm run lint`（或 `yarn lint` / `pnpm lint`）；monorepo 要覆盖全部包：`npm run lint --workspaces` / `pnpm -r lint`（yarn 的 classic 与 berry 写法不同，用前先查）
      - Rust: `Cargo.toml` → `cargo clippy --all-targets -- -D warnings`
      - Go: `go.mod` → `go vet ./...`
+     - 文档形状: 仓库根有 `scripts/docs_lint.py` → `python3 scripts/docs_lint.py`（`/finish` 只在编码轮跑，这里覆盖 `/design` 等纯文档提交）
      - **一条都没命中**（或命中但工具配置缺失）→ **跳过这一步**，继续往下走
    - **本轮引入、修复方式明确且不改变已确认方案的 lint 错误**：自主修复，重跑 lint 和受影响验证；修改后的 diff 须按第 4 步既有 review 契约复审，review 若再修文件，则重新执行本步，不能提交未经检查的新改动。
    - 原有无关问题、归属不明的改动、需要方向性取舍或无法在上述范围内修复的失败：暂停提交，集中报告错误、影响与可选方案，等用户决定；无人值守按调用技能的失败出口处理。
    - 未经用户明示授权，不得用 `--no-verify`、关闭规则或修改检查范围等方式绕过门禁。
 6. **探测轮次 N**（决定是否加 `[round N]` 前缀，给跨轮追溯补一层约束）：
    - **主信号**：当前分支名匹配 `^(?:codex/)?round(\d+)(-|$)` → 取第一个捕获组为 N（兼容带或不带 `codex/` 的 round 分支）。
-   - **兜底**（`--no-worktree` 等非 round 分支）：看本次变更涉及的文件里有没有 `docs/<N>-*/` 路径（`git diff --cached --name-only` 与 `git status --porcelain` 的并集），命中唯一的 `<N>` 则取之。
+   - **兜底**（`--no-worktree` 等非 round 分支）：看本次变更涉及的文件里有没有 `docs/<N>-*` 路径（单文件或历史目录；`git diff --cached --name-only` 与 `git status --porcelain` 的并集），命中唯一的 `<N>` 则取之。
    - 两路都判不出 N → **不加前缀**，走普通 commit，不要硬凑。
 7. 分析所有变更，生成 commit message：
    - 使用中文
    - 遵循 semantic commit message 规则（如 `feat:`, `fix:`, `refactor:` 等）
    - **若第 6 步探出 N**：在 semantic message 最前面加 `[round N] ` 前缀，形如 `[round 3] feat(skill): 支持 xxx`
-   - **若第 4 步 `/review-loop` 以「未收敛留痕」放行**：在 message body 追加其给出的标注行（形如 `Review: 2 轮未收敛，遗留 N 条 finding，见 docs/<N>-*/REVIEW.md`），不得省略——这是遗留问题在 `/finish` 前唯一的显式可见性
+   - **若第 4 步 `/review-loop` 以「未收敛留痕」放行**：在 message body 追加其给出的标注行（形如 `Review: 2 轮未收敛，遗留 N 条 finding`，其后紧跟 review-loop 给出的「未收敛遗留」正文），不得省略——这是遗留问题在 `/finish` 前唯一的显式可见性
    - **若第 4 步 `/review-loop` 走了降级路径**（Step 5 的第 ② 或 ③ 档）：在 message body 追加一行标注，**照抄该档在 Step 5 里的措辞**（② 按实际保住的属性报告，不能把已固定的 effort 写成丢失；③ 写「未经独立 context 把关」），**并附降级证据**（那次调用失败的实际表现 / 工具确实不在列表）——只写结论不算数，写不出证据说明本就不该降级
    - 简明扼要，聚焦于「为什么」而非「改了什么」
 8. 将相关文件添加到暂存区（优先按文件名添加，避免 `git add -A`）
 9. 执行提交，commit message 末尾必须**按当前执行的 Agent** 追加正确的 `Co-authored-by` trailer（详见全局 AGENTS.md「git 规则」）：
    - CC（Claude Code）执行 → `Co-authored-by: Claude <noreply@anthropic.com>`
    - Codex（OpenAI Codex）执行 → `Co-authored-by: OpenAI Codex <noreply@openai.com>`
-   - **判据**：你知道自己是哪个 Agent，据此选身份；**Codex 绝不写 Claude 身份，CC 绝不写 Codex 身份**。
+   - DSH（DeepSeek Harness）执行 → `Co-authored-by: DeepSeek Harness <noreply@localhost>`
+   - **判据**：你知道自己是哪个 Agent，据此选身份；**不写其他 Agent 的身份**。
 10. 运行 `git status` 确认提交成功
