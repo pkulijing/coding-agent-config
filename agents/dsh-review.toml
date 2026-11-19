@@ -1,0 +1,17 @@
+# 由 review-loop 读取并传入 DSH 的 subagent 工具；不是 DSH 原生 agent 注册配置。
+# 与 agents/codex-review.toml 同构，差异只来自平台能力：
+#   - DSH 委托深度上限为 1（子 agent 再调 subagent 会被拒），不存在 orchestrator 子 agent，
+#     汇总留在主会话，因此不设 [orchestrator] 角色。
+#   - 本机唯一 route deepseek-account/deepseek-flash 的思考档为 off/low/high/max，没有 medium；
+#     普通 reviewer 取 high（默认平衡档），深审取 max。不要照抄 CC 的 medium。
+# 改本文件即改审查强度，按 /review-loop 的规则审查。
+
+[reviewer]
+provider = "deepseek-account"
+model = "deepseek-flash"
+reasoning_effort = "high"
+
+[deep_reviewer]
+provider = "deepseek-account"
+model = "deepseek-flash"
+reasoning_effort = "max"

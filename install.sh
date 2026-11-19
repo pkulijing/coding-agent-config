@@ -521,6 +521,22 @@ deploy_claude_compat() {
     merge_settings "$REPO_DIR/settings.base.json" "$agent_home/settings.json"
 }
 
+# DeepSeek Harness 复用共享 agents 根，不单独投影技能目录：
+#   - 技能已由 deploy_codex 逐技能链到 ~/.agents/skills/，DSH 默认扫描该根（rank 500）。
+#   - 全局规则入口 ~/.agents/AGENTS.md 是 DSH 用户全局指令链的第二环（第一环是 $DSH_HOME/AGENTS.md）。
+#     写共享根一份即可，避免同一份规则在 ~/.dsh 下出现第二个 owner。
+# 只在 DSH 已安装时部署：没有 ~/.dsh 的机器不需要这条入口。
+# 识别失败/误判的代价仅是多一条指向本仓的共享根软链，删除即可。
+deploy_dsh() {
+    local agents_home="${DSH_AGENTS_HOME:-$HOME/.agents}"
+    [ -d "${DSH_HOME:-$HOME/.dsh}" ] || return 0
+    mkdir -p "$agents_home"
+    link_item "$REPO_DIR/GLOBAL_AGENTS.md" "$agents_home/AGENTS.md"
+    # 覆盖 DSH_AGENTS_HOME 时，DSH 的技能根也随之改到 <agentsHome>/skills；
+    # 默认根的技能已由 deploy_codex 部署，这里只在自定义根时补一份，避免重复投影。
+    [ "$agents_home" = "$HOME/.agents" ] || deploy_skills "$agents_home/skills"
+}
+
 # 判断目录是否位于 git linked worktree 内（主 checkout、非 git 目录都返回非 0）。
 # 比较 git-dir 与 git-common-dir 的物理路径：二者在 rev-parse 输出里可能是相对路径，
 # 故各自 cd 进去取 pwd -P，不依赖较新 git 才有的 --path-format。
@@ -568,6 +584,7 @@ ccg_discover_managed_roots
 deploy_shared
 deploy_codex
 deploy_claude_compat
+deploy_dsh
 ccg_repair_legacy_resources "${CODEX_HOME:-$HOME/.codex}"
 [ "${CODEX_HOME:-$HOME/.codex}" = "$HOME/.codex" ] || ccg_repair_legacy_resources "$HOME/.codex"
 [ ! -d "$HOME/.claude" ] || ccg_repair_legacy_resources "$HOME/.claude"

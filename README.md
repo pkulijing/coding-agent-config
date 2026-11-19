@@ -1,6 +1,6 @@
 # coding-agent-config
 
-个人 Coding Agent harness，集中维护开发规范、技能、独立 review、脚本、hooks 和跨项目模板。目标是让 Agent 自主完成工作，减少人工纠正与维护；Codex 主用，Claude Code 保留兼容入口。
+个人 Coding Agent harness，集中维护开发规范、技能、独立 review、脚本、hooks 和跨项目模板。目标是让 Agent 自主完成工作，减少人工纠正与维护；Codex 主用，Claude Code 保留兼容入口，DeepSeek Harness 复用同一套共享资源。
 
 日常规则见 [GLOBAL_AGENTS.md](GLOBAL_AGENTS.md)，本仓开发约束见 [AGENTS.md](AGENTS.md)。需求以 issue 为真源：[未关闭项](https://github.com/pkulijing/coding-agent-config/issues?q=is%3Aissue+is%3Aopen+label%3Apriority%3AP0%2Cpriority%3AP1%2Cpriority%3AP2)，开发历史见 [DEVTREE](docs/DEVTREE.md)。
 
@@ -13,7 +13,8 @@
 | 共享资源目录 | `~/.coding-agent/{skills,scripts,templates,playbooks,hooks,agents}`，链接到本仓 |
 | 稳定仓库入口 | `~/.coding-agent/global-repo` |
 | Codex 指令与配置 | `${CODEX_HOME:-~/.codex}/AGENTS.md`、`config.toml` |
-| Codex 技能发现 | `~/.agents/skills/`，逐技能链接 |
+| 共享技能根 | `~/.agents/skills/`，逐技能链接；Codex 与 DeepSeek Harness 共用（DSH 覆盖 `DSH_AGENTS_HOME` 时同步部署到该根的 `skills/`） |
+| DSH 全局指令 | `${DSH_AGENTS_HOME:-~/.agents}/AGENTS.md`，仅在 `${DSH_HOME:-~/.dsh}` 存在时部署 |
 | 用户真实配置 | `~/.coding-agent/config.env`，示例见 [user.config.example.env](user.config.example.env) |
 | 自动同步日志 | `~/.coding-agent/logs/auto-update.log` |
 
@@ -44,7 +45,7 @@ Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`
 | [paper-read](skills/paper-read/SKILL.md) | 论文阅读笔记 |
 | [routine-dev](skills/routine-dev/SKILL.md)、[routine-slim](skills/routine-slim/SKILL.md) | 自动开发明确需求、定期清理指令 |
 
-review 规格以技能与 [Codex 角色配置](agents/codex-review.toml) 为准；CC 定义在 [agents](agents/)。两端均使用独立 context，能力不足时按既定链降级并报告。它不能证明模型质量不会下降，也不能消除同模型盲区。
+review 规格以技能、[Codex 角色配置](agents/codex-review.toml)与 [DSH 角色配置](agents/dsh-review.toml) 为准；CC 定义在 [agents](agents/)。三个平台均使用独立 context，能力不足时按既定链降级并报告。DSH 的委托深度上限为 1，编队由主会话直启 reviewer，角度与模型档不变。它不能证明模型质量不会下降，也不能消除同模型盲区。
 
 ## 规则的放置与维护
 

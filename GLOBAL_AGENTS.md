@@ -95,6 +95,7 @@ CC 指 Claude Code，Codex 指 OpenAI Codex，统称 Coding Agent；本规范对
   | --- | --- |
   | CC | `Co-authored-by: Claude <noreply@anthropic.com>` |
   | Codex | `Co-authored-by: OpenAI Codex <noreply@openai.com>` |
+  | DSH | `Co-authored-by: DeepSeek Harness <noreply@localhost>` |
 
 - 保全已有、未提交及归属不明的工作；历史改写、合入和清理遵循相应技能的授权与备份条件，不强行覆盖或删除。
 

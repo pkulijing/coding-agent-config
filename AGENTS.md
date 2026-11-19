@@ -6,11 +6,12 @@
 
 | 入口 | 职责 |
 | --- | --- |
-| `GLOBAL_AGENTS.md` | 全局规则，链接到 Codex 的 AGENTS.md；已有 CC 安装可链接到 CLAUDE.md |
+| `GLOBAL_AGENTS.md` | 全局规则，链接到 Codex 的 AGENTS.md；已有 CC 安装可链接到 CLAUDE.md；DSH 安装后链接到共享 agents 根的 AGENTS.md |
 | `AGENTS.md` / `CLAUDE.md` | 本仓规则正文 / 仅含 `@AGENTS.md` 的兼容入口 |
-| `skills/` | 共享技能；Codex 通过 `~/.agents/skills/` 发现 |
+| `skills/` | 共享技能；Codex 与 DSH 通过 `~/.agents/skills/` 发现（DSH 覆盖 `DSH_AGENTS_HOME` 时为该 agents 根的 `skills/`） |
 | `scripts/`、`templates/`、`playbooks/`、`hooks/`、`agents/` | 整体软链到 `~/.coding-agent/`，内容修改随主 checkout 生效 |
 | `agents/codex-review.toml` | Codex review 的模型/思考档真源，供技能传参，不是原生注册配置 |
+| `agents/dsh-review.toml` | DSH review 的模型/思考档真源，同上；DSH 委托深度为 1，不设 orchestrator 角色 |
 | `codex.config.base.toml` | Codex 基线；合并托管 hooks，保留块外用户配置，规则长度上限仅补缺 |
 | `settings.base.json` | CC 兼容基线，仅已有 CC 安装时部署 |
 | `user.config.example.env` | 配置示例；真实值在仓库外 `~/.coding-agent/config.env`，迁移保留原件、用户值优先 |
