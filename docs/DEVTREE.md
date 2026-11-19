@@ -25,67 +25,68 @@ graph TD
   classDef infra fill:#e2d9f3,stroke:#6f42c1,color:#3d1a78,font-weight:bold
   classDef research fill:#e2e3e5,stroke:#6c757d,color:#383d41,font-weight:bold
   classDef epic fill:#f8f9fa,stroke:#adb5bd,color:#495057,font-weight:bold,font-size:15px
-  ROOT["coding-agent-config"]:::epic
-  ROOT --> E0["基础机制"]:::epic
-  E0 --> E1
-  E0 --> E2
-  E0 --> E3
-  E0 --> E4
-  E0 --> E5
-  E0 --> E6
-  E0 --> E7
-  ROOT --> E8["开发工具链"]:::epic
-  E8 --> E9
-  E8 --> E10
-  E8 --> E11
-  E8 --> E12
-  E8 --> E13
-  E8 --> E14["开发项管理"]:::epic
-  E8 --> E17["代码管理"]:::epic
-  E8 --> E20
-  E14 --> E15
-  E14 --> E16
-  E17 --> E18
-  E17 --> E19
 
-  subgraph E1["✅ CC 工具复用"]
+  ROOT["coding-agent-config"]:::epic
+  ROOT --> g1["基础机制"]:::epic
+  ROOT --> g2["开发工具链"]:::epic
+  g1 --> e1
+  g1 --> e2
+  g1 --> e3
+  g1 --> e4
+  g1 --> e5
+  g1 --> e6
+  g1 --> e7
+  g2 --> e8
+  g2 --> e9
+  g2 --> e10
+  g2 --> e11
+  g2 --> e12
+  g2 --> p1["开发项管理"]:::epic
+  g2 --> p2["代码管理"]:::epic
+  g2 --> e17
+  p1 --> e13
+  p1 --> e14
+  p2 --> e15
+  p2 --> e16
+
+  subgraph e1["✅ CC 工具复用"]
     direction TB
-    N0["🌱 0 · 安装脚本"]:::genesis
-    N2["🏗️ 2 · 重构项目 CLAUDE 文件结构"]:::refactor
-    N16["📦 16 · 自动同步全局配置"]:::infra
-    N19["🐛 19 · 修复 Linux 自动同步缺陷"]:::bugfix
-    N58["🐛 58 · 调度器自杀式重注册"]:::bugfix
+    N0["🌱 初建 0 · 安装脚本"]:::genesis
+    N2["🏗️ 重构 2 · 重构项目 CLAUDE 文件结构"]:::refactor
+    N16["📦 工程 16 · 自动同步全局配置"]:::infra
+    N19["🐛 修复 19 · 修复 Linux 自动同步缺陷"]:::bugfix
+    N58["🐛 修复 58 · 调度器自杀式重注册"]:::bugfix
     N0 ~~~ N2
     N2 ~~~ N16
     N16 ~~~ N19
     N19 ~~~ N58
   end
 
-  subgraph E2["✅ CC 配置合并"]
+  subgraph e2["✅ CC 配置合并"]
     direction TB
-    N6["📦 6 · settings 合并机制"]:::infra
-    N8["📦 8 · 权限配置治理与清理 skill"]:::infra
+    N6["📦 工程 6 · settings 合并机制"]:::infra
+    N8["📦 工程 8 · 权限配置治理与清理 skill"]:::infra
     N6 ~~~ N8
   end
 
-  subgraph E3["🔄 用户可配置项"]
+  subgraph e3["🔄 用户可配置项"]
     direction TB
-    N27["🌱 27 · 用户可配置项机制"]:::genesis
+    N27["🌱 初建 27 · 用户可配置项机制"]:::genesis
   end
 
-  subgraph E4["🔄 项目模板机制"]
+  subgraph e4["🔄 项目模板机制"]
     direction TB
-    N11["✨ 11 · 跨项目共享模板与 sync-skill"]:::feature
-    N14["✨ 14 · 模板支持 GitLab 双轨"]:::feature
-    N15["✨ 15 · 三件套 skill 支持 GitLab 双轨"]:::feature
-    N17["✨ 17 · python-uv 模板自动 bootstrap"]:::feature
-    N18["✨ 18 · sync 支持无 stack 路径"]:::feature
-    N30["✨ 30 · 前端栈规则与 scaffold 模板"]:::feature
-    N31["📦 31 · python 模板默认 only-managed"]:::infra
-    N32["🐛 32 · vscode 配置落根跨栈合并"]:::bugfix
-    N33["✨ 33 · ros2 工作空间模板"]:::feature
-    N36["✨ 36 · skill 与模板批量清理"]:::feature
-    N43["✨ 43 · gitlab-ci 按 runner 选变体"]:::feature
+    N11["✨ 功能 11 · 跨项目共享模板与 sync-skill"]:::feature
+    N14["✨ 功能 14 · 模板支持 GitLab 双轨"]:::feature
+    N15["✨ 功能 15 · 三件套 skill 支持 GitLab 双轨"]:::feature
+    N17["✨ 功能 17 · python-uv 模板自动 bootstrap"]:::feature
+    N18["✨ 功能 18 · sync 支持无 stack 路径"]:::feature
+    N30["✨ 功能 30 · 前端栈规则与 scaffold 模板"]:::feature
+    N31["📦 工程 31 · python 模板默认 only-managed"]:::infra
+    N32["🐛 修复 32 · vscode 配置落根跨栈合并"]:::bugfix
+    N33["✨ 功能 33 · ros2 工作空间模板"]:::feature
+    N36["✨ 功能 36 · skill 与模板批量清理"]:::feature
+    N43["✨ 功能 43 · gitlab-ci 按 runner 选变体"]:::feature
     N11 ~~~ N14
     N14 ~~~ N15
     N15 ~~~ N17
@@ -98,29 +99,31 @@ graph TD
     N36 ~~~ N43
   end
 
-  subgraph E5["🔄 多 Agent 兼容"]
+  subgraph e5["🔄 多 Agent 兼容"]
     direction TB
-    N20["🔬 20 · CC 与 Codex 双兼容调研"]:::research
-    N22["✨ 22 · CC 与 Codex 双兼容主链"]:::feature
-    N61["📦 61 · Codex 全盘迁移"]:::infra
+    N20["🔬 探索 20 · CC 与 Codex 双兼容调研"]:::research
+    N22["✨ 功能 22 · CC 与 Codex 双兼容主链"]:::feature
+    N61["📦 工程 61 · Codex 全盘迁移"]:::infra
+    N69["📦 工程 69 · DSH 三端配置接入"]:::infra
     N20 ~~~ N22
     N22 ~~~ N61
+    N61 ~~~ N69
   end
 
-  subgraph E6["🔄 全局宪法治理"]
+  subgraph e6["🔄 全局宪法治理"]
     direction TB
-    N24["🏗️ 24 · 精简宪法与会话标题约定排查"]:::refactor
-    N25["🏗️ 25 · python 模板与子 CLAUDE 机制"]:::refactor
-    N44["🏗️ 44 · skill 措辞 review"]:::refactor
-    N45["✨ 45 · commit 前独立 review 循环"]:::feature
-    N46["🐛 46 · review-loop 修两处实战缺口"]:::bugfix
-    N47["🏗️ 47 · review-loop 收敛闸重构"]:::refactor
-    N48["🏗️ 48 · review-loop 去 codex 简化"]:::refactor
-    N50["🏗️ 50 · review 机制独立 agent 重构"]:::refactor
-    N52["🏗️ 52 · 指令面精简与定期化"]:::refactor
-    N53["🏗️ 53 · review 成本与思考深度调优"]:::refactor
-    N55["✨ 55 · 委派授权声明"]:::feature
-    N64["🏗️ 64 · 个人 Harness 零基重构"]:::refactor
+    N24["🏗️ 重构 24 · 精简宪法与会话标题约定排查"]:::refactor
+    N25["🏗️ 重构 25 · python 模板与子 CLAUDE 机制"]:::refactor
+    N44["🏗️ 重构 44 · skill 措辞 review"]:::refactor
+    N45["✨ 功能 45 · commit 前独立 review 循环"]:::feature
+    N46["🐛 修复 46 · review-loop 修两处实战缺口"]:::bugfix
+    N47["🏗️ 重构 47 · review-loop 收敛闸重构"]:::refactor
+    N48["🏗️ 重构 48 · review-loop 去 codex 简化"]:::refactor
+    N50["🏗️ 重构 50 · review 机制独立 agent 重构"]:::refactor
+    N52["🏗️ 重构 52 · 指令面精简与定期化"]:::refactor
+    N53["🏗️ 重构 53 · review 成本与思考深度调优"]:::refactor
+    N55["✨ 功能 55 · 委派授权声明"]:::feature
+    N64["🏗️ 重构 64 · 个人 Harness 零基重构"]:::refactor
     N24 ~~~ N25
     N25 ~~~ N44
     N44 ~~~ N45
@@ -134,110 +137,109 @@ graph TD
     N55 ~~~ N64
   end
 
-  subgraph E7["🔄 领域规则沉淀"]
+  subgraph e7["🔄 领域规则沉淀"]
     direction TB
-    N28["✨ 28 · lark 规则文档"]:::feature
-    N35["✨ 35 · 批量沉淀文档类规则"]:::feature
-    N38["✨ 38 · 批量沉淀 python-ros2 规则"]:::feature
-    N51["🏗️ 51 · rules 改名 playbooks 按需加载"]:::refactor
+    N28["✨ 功能 28 · lark 规则文档"]:::feature
+    N35["✨ 功能 35 · 批量沉淀文档类规则"]:::feature
+    N38["✨ 功能 38 · 批量沉淀 python-ros2 规则"]:::feature
+    N51["🏗️ 重构 51 · rules 改名 playbooks 按需加载"]:::refactor
     N28 ~~~ N35
     N35 ~~~ N38
     N38 ~~~ N51
   end
 
-  subgraph E9["✅ 项目初始化"]
+  subgraph e8["✅ 项目初始化"]
     direction TB
-    N9["📦 9 · 创建 bootstrap-skill"]:::infra
+    N9["📦 工程 9 · 创建 bootstrap-skill"]:::infra
   end
 
-  subgraph E10["✅ 开发项收尾"]
+  subgraph e9["✅ 开发项收尾"]
     direction TB
-    N1["✨ 1 · 创建 commit-skill"]:::feature
-    N13["✨ 13 · finish 收尾同步 README"]:::feature
-    N21["✨ 21 · finish 自动收尾 worktree"]:::feature
-    N23["✨ 23 · finish 跨项目沉淀提 issue"]:::feature
-    N26["🐛 26 · finish 沉淀 issue 强制打 label"]:::bugfix
-    N65["✨ 65 · 收尾提交原则与询问精简"]:::feature
-    N67["✨ 67 · 开发会话标题自动化"]:::feature
+    N1["✨ 功能 1 · 创建 commit-skill"]:::feature
+    N13["✨ 功能 13 · finish 收尾同步 README"]:::feature
+    N21["✨ 功能 21 · finish 自动收尾 worktree"]:::feature
+    N23["✨ 功能 23 · finish 跨项目沉淀提 issue"]:::feature
+    N26["🐛 修复 26 · finish 沉淀 issue 强制打 label"]:::bugfix
+    N65["✨ 功能 65 · 收尾提交原则与询问精简"]:::feature
+    N67["✨ 功能 67 · 开发会话标题自动化"]:::feature
+    N68["✨ 功能 68 · 精简人工确认"]:::feature
     N1 ~~~ N13
     N13 ~~~ N21
     N21 ~~~ N23
     N23 ~~~ N26
     N26 ~~~ N65
     N65 ~~~ N67
+    N67 ~~~ N68
   end
 
-  subgraph E11["✅ 轻量开发流"]
+  subgraph e10["✅ 轻量开发流"]
     direction TB
-    N41["✨ 41 · 新增 /quick 轻量开发流"]:::feature
+    N41["✨ 功能 41 · 新增 /quick 轻量开发流"]:::feature
   end
 
-  subgraph E12["🔄 讨论式方案设计"]
+  subgraph e11["🔄 讨论式方案设计"]
     direction TB
-    N60["✨ 60 · design 讨论式方案 skill"]:::feature
-    N62["🐛 62 · 设计讨论隔离与单提交归档"]:::bugfix
+    N60["✨ 功能 60 · design 讨论式方案 skill"]:::feature
+    N62["🐛 修复 62 · 设计讨论隔离与单提交归档"]:::bugfix
     N60 ~~~ N62
   end
 
-  subgraph E13["🔄 云端自动化 routine"]
+  subgraph e12["🔄 云端自动化 routine"]
     direction TB
-    N49["🌱 49 · 文档类 issue 云端 routine 自动化"]:::genesis
-    N54["✨ 54 · routine 手动标记扩面"]:::feature
-    N56["✨ 56 · routine 分诊结果缓存"]:::feature
-    N59["🏗️ 59 · routine-dev 简化"]:::refactor
-    N63["✨ 63 · 放宽自动化开发接单范围"]:::feature
+    N49["🌱 初建 49 · 文档类 issue 云端 routine 自动化"]:::genesis
+    N54["✨ 功能 54 · routine 手动标记扩面"]:::feature
+    N56["✨ 功能 56 · routine 分诊结果缓存"]:::feature
+    N59["🏗️ 重构 59 · routine-dev 简化"]:::refactor
+    N63["✨ 功能 63 · 放宽自动化开发接单范围"]:::feature
     N49 ~~~ N54
     N54 ~~~ N56
     N56 ~~~ N59
     N59 ~~~ N63
   end
 
-  subgraph E15["✅ DEVTREE 管理"]
+  subgraph e13["✅ DEVTREE 管理"]
     direction TB
-    N4["✨ 4 · 创建 devtree-skill"]:::feature
-    N5["🏗️ 5 · 重构 devtree-skill-epic 模型"]:::refactor
+    N4["✨ 功能 4 · 创建 devtree-skill"]:::feature
+    N5["🏗️ 重构 5 · 重构 devtree-skill-epic 模型"]:::refactor
     N4 ~~~ N5
   end
 
-  subgraph E16["✅ 需求管理"]
+  subgraph e14["✅ 需求管理"]
     direction TB
-    N7["✨ 7 · 创建 backlog-skill"]:::feature
-    N12["✨ 12 · backlog 改为 issue 驱动"]:::feature
-    N39["✨ 39 · 废弃 backlog 单一真源"]:::feature
-    N57["✨ 57 · 开轮远端对齐与撞车决策"]:::feature
+    N7["✨ 功能 7 · 创建 backlog-skill"]:::feature
+    N12["✨ 功能 12 · backlog 改为 issue 驱动"]:::feature
+    N39["✨ 功能 39 · 废弃 backlog 单一真源"]:::feature
+    N57["✨ 功能 57 · 开轮远端对齐与撞车决策"]:::feature
     N7 ~~~ N12
     N12 ~~~ N39
     N39 ~~~ N57
   end
 
-  subgraph E18["✅ rebase工作流"]
+  subgraph e15["✅ rebase工作流"]
     direction TB
-    N3["✨ 3 · 创建 rebase-skill"]:::feature
-    N40["🏗️ 40 · rebase 静默直行与 commit 署名身份"]:::refactor
+    N3["✨ 功能 3 · 创建 rebase-skill"]:::feature
+    N40["🏗️ 重构 40 · rebase 静默直行与 commit 署名身份"]:::refactor
     N3 ~~~ N40
   end
 
-  subgraph E19["🔄 代码格式化"]
+  subgraph e16["🔄 代码格式化"]
     direction TB
-    N10["📦 10 · 接入 prettier 格式化 hook"]:::infra
-    N34["🐛 34 · 修复主题与 formatter 双 bug"]:::bugfix
-    N42["📦 42 · DEVTREE 表格免 prettier 对齐"]:::infra
+    N10["📦 工程 10 · 接入 prettier 格式化 hook"]:::infra
+    N34["🐛 修复 34 · 修复主题与 formatter 双 bug"]:::bugfix
+    N42["📦 工程 42 · DEVTREE 表格免 prettier 对齐"]:::infra
     N10 ~~~ N34
     N34 ~~~ N42
   end
 
-  subgraph E20["🔄 内容创作 skill"]
+  subgraph e17["🔄 内容创作 skill"]
     direction TB
-    N29["🐛 29 · paper-read 资产就近存放"]:::bugfix
+    N29["🐛 修复 29 · paper-read 资产就近存放"]:::bugfix
   end
-
 ```
-
----
 
 ## 节点索引
 
-> 最后更新：2026-11-17 | 共 66 轮
+> 最后更新：2026-11-19 | 共 68 轮
 
 | # | 名称 | 类型 | 所属 Epic | 一句话描述 |
 | - | - | - | - | - |
@@ -297,7 +299,7 @@ graph TD
 | 54 | routine 手动标记扩面 | ✨ 功能 | 云端自动化 routine | 给 `/routine-docs`（本轮改名 `/routine-dev`）加**人工标记通道**：owner 给 issue 打 `auto:take` 即背书其正文可被无人值守执行，落点从「只限文档」放开到 `skills/`（除自己）/ `templates/` / `scripts/` / `hooks/`。**关键认识：「落点只限文档」原本不只是范围设定，它同时是替「issue 正文来自公开仓、不可信」兜底的安全机制**——文档写错人下次读到就发现，脚本写错每次工具调用都在执行它；故放开必须先给这道防线找等价替代，替代物就是人工背书。**选 label 而非需求原提的评论做闸**：公开仓任何人都能评论（`authorAssociation` 为 `NONE`），而 label 只有写权限者打得上，授权强度由 GitHub 权限模型保证；且云端读 label 已实测跑通、读评论的 MCP 能力未经实测，押在后者会静默失效。评论降级为可选实现提示（`issue-view --with-comments` 输出 `ownerHint`，读不到不阻断）。产出一条可复用判据：**标记覆盖「保守性」排除（P0 / 需讨论 / 需落 PLAN / 落点非文档），覆盖不了「事实性」排除（正文没说清 / 现状已满足 / 撞红线）——「我授权你做」≠「你必须做出来」**。四条红线打了标记也解不开：自己、`agents/**`、`install.sh`、`.github/**`；其中 `agents/**` 是 PLAN 里没有、rebase 并入 round 53 后新增的，它是**本 routine 自己每个 commit 都要过的那道门禁的强度**——reference §7 把前两条归并成通则「routine 不得修改任何决定它自己被允许做什么、或自己被怎样检查的东西」。§7 同时明写论证弱点不粉饰：owner 打 label 时未必逐字读过正文，攻击链未失效、只是把要骗过的对象从分诊模型换成了人。顺带补上原先**单向**的撞车防线（slim 排除在途 PR 碰过的文件、dev 只按 `Closes #N` 排 issue 不看文件）——dev 侧落点复核的并集初始值从空集改为「所有 open PR 碰过的文件」，一处初始化改动补成双向且覆盖人开的 PR。额外产物：`platform_issue.py` 加 `--with-comments`（**owner 身份判据下沉进代码并挂单测**，不留给模型每次自觉过滤；默认 schema 实测新旧字节级相同）、`unlink_legacy_dir` 目标路径参数化（改名清理复用不了写死的 `/*/rules`，测试 9→12 条）、分支前缀 `auto/dev-*` 但仍认历史前缀防老 PR 失联。**教训：TDD 的「先红」只证明测试当时会红、不证明它红在你以为的判据上**——新增用例 10 初版是假绿（沙盘没建标志文件，第二道防线替被测判据兜了底），reviewer 主动改坏实现才发现 |
 | 55 | 委派授权声明 | ✨ 功能 | 全局宪法治理 | #91 的增量补充（主体已由 735c04c 修完）。起因是 review 编队上线后反复静默降级：CC 向 Opus 5 档常驻注入 `Do not call the AgentTool unless the user requested it`（服务端 flag 控制、用户不可关、sonnet 不复现），模型把这条**条件式策略约束**读成**能力缺失**、一次不试就退到本端自审。**本轮最值钱的不是那 3 行 diff，是撞车后的取舍**：完整实现 + 2 轮 review clean + 2 个 commit 落地后才 fetch，发现远端 6 天前已修完同一 issue 且更全面（多出「无人值守例外」与 /commit 联动），人类拍板**弃掉整版**（存备份 tag）、只补真增量——在已有判据旁再写近似表述会双写漂移，重复比漏改更糟。最终只加两处：① 宪法补一条**正面**授权声明（远端表述是防御式的「不构成降级理由」、绑定在降级判断上；本条声明长期授权、作用域覆盖任何委派场景），措辞刻意写成「那类条件式指令的条件**已被满足**」而非「忽略平台指令」——前者如实陈述、后者是通用后门，故自带作用域限定句严格限于「委派子 agent」；② review-loop 堵住「编一次没发生的调用来凑降级证据」这个反向逃逸口。**刻意不把 Kep / flag 名 / 版本号写进指令面**（round 50 已确立逆向描述全删），只留 PROMPT.md 档案备将来比对。3 行 diff、指令面 +0.2%，3 reviewer 首轮即 clean，两条专项（是否与远端重复、是否构成后门）三方独立核验均通过。**过程逮到两件事**：`~/.claude/agents/` 根本没软链过去（远端新增目录后本机未重跑 install.sh），意味着 review-orchestrator 编队在本机一直不可用而无任何告警——按新门槛真调了一次拿到确凿报错，但判定「缺的只是专用定义、Agent 工具与 general-purpose 都在、独立 context 拿得到」故**不降级**，改用 general-purpose 委派（代价：编队档位未由 frontmatter 钉死）；以及**实测证伪** CLAUDE.md「新 agent 类型需新开会话」一句（install 建软链后本会话内即热加载，但边界待验证故不夹带改）。沉淀三条 → #114（/start 开轮前 fetch 查 issue 是否已被远端关闭，P1）/ #115（skill 依赖缺失应显式报错而非自行找替代路径）/ #116（宪法补「与远端已合入实现撞车」的决策路径） |
 | 56 | routine 分诊结果缓存 | ✨ 功能 | 云端自动化 routine | 给 `/routine-dev` 加分诊结果缓存：被自动通道判掉的 issue 回写 `auto:skip`，下次在「不读正文」的硬过滤层直接跳过（每周三次重读同一批正文的成本随积压只增不减）。**复活机制是本轮主要推导**——「打标时刻」的三条存法全被实证堵死：存进 issue 评论撞 routine「绝不发评论」的安全硬规则（`ff-merge.yml` 订阅 `issue_comment.created`，从不产生评论才让那条路物理够不着）、读 timeline 的 labeled 事件云端取不到（无 gh、REST 403、内置 MCP 未见该能力，而云端才是主运行形态）、存仓库文件遇上零 PR 的运行就没有提交落点。于是**干脆不存时刻**，新增 `.github/workflows/auto-skip-reset.yml` 在 issue 被编辑 / 评论 / 重开时直接摘标，routine 侧只需「加 label」一个写能力。方案前提也是实证来的：ff-merge 订阅的是 `pull_request_target.labeled`、**只对 PR 触发**，故原文「routine 不打 label」的精确形态其实是「绝不给 **PR** 打任何 label」，一并改准并把推导写进 reference §1。**深审（重档 5 reviewer，两轮共 9 条 finding）逼出三条硬约束**：① 打标前必须复核时间戳——复活闸只在 issue **已经带着** skip 时才生效，人在运行途中做的补救编辑触发不了摘标，不复核就会按已作废的旧正文打标而**编辑的人不知道自己那次编辑没算数**；取不到时间戳一律 fail-closed 放弃打标（反过来「照打」会让闸静默失能，恰好埋掉它要防的事）。为此 helper 加 `issue-list --no-body`，否则复核要把正文再读一遍、花掉的正是这个 label 要省的钱。② **缓存的失效信号必须与判定的输入同源**——依据「仓库现状」的判定（如「疑似已完成」）不缓存，因为复活闸感知不到仓库变了；同理人工轮改动 1.2 判据后要清空全仓 `auto:skip`。③ 一条都没打成时必须在 PR 里明说，否则「本次没有可缓存的」与「机制整体失效」在输出里长得一模一样，而云端时间戳字段尚未实测。额外产物：helper 新增 `issue-label-add` / `-remove`（双轨、增量语义、一个 label 一次 flag——名字可含逗号）+ 沙盘桩测（含**底层非零退出必须透传**：打标失败却报成功会让 routine 以为结论已落库）、`issue-list` 吐 `updatedAt`（**平台没给就是 null，绝不拿「现在」兜底**，否则闸永远答「没动过」）、`/triage` 加「自动化」一列（`skip` 意味 routine 已放弃、只可能由人来做，同等条件下更该排前）。**局限**：云端 MCP 有无 label 写工具与时间戳字段仍未实测，最坏是特性在云端不生效（已 fail-closed + 要求显式报出）；复核只收窄窗口未消灭；SKILL.md 那个 commit 跑满 review 2 轮上限、9 条全修但第 3 轮确认未跑。**教训 → #123（P1）**：一个 reviewer 读的是主仓库 checkout（仍在 master）而非 worktree——子 agent 继承会话主工作目录、继承不到主会话 shell 的 cd，委派 prompt 写了绝对路径也只是「告知」；这次报的是「东西不存在」一眼假，**反方向才致命**：在主 checkout 里跑 git diff 会看到一堆无关的未提交改动，认真审完报 clean 而失败完全静默 |
-| 57 | 开轮远端对齐与撞车决策 | ✨ 功能 | 需求管理 | round 55 撞车事故的两半（#114 + #116）一并收口。**#114 —— 开轮前先与远端对齐**：`/start` 此前完全不碰远端，issue 详情只读正文、轮次编号三源全是本地信号，于是多设备 + 云端 routine 并行下撞车只能等到 `/finish` 之后暴露（round 55 因此整版作废）。新增「远端对齐」为通用流程**第 1 步**（排最前是必要的：编号要用远端信号，撞车检查得赶在建 worktree / docs 之前）。**三个信号各补各的盲区**：issue 自身 `state`（平台权威、**不依赖提交信息约定** —— `/start` 是全局 skill，别的项目未必写 `Closes #N`；还能识别 `NOT_PLANNED` 即「有人决定不做」，与「做完了」处理方向相反）、已合入的关闭 commit（给人类拍板要看的证据）、**远端在途分支**（`--remotes=origin --not <主分支>`，覆盖「分支已做完、PR 还开着、issue 还 open」—— 本仓 routine 每周开 PR 却不自动合，前两个信号都看不见它；这一条是 issue 原文没想到的）。轮次编号三源扩五源；三条失败路径（无 origin / fetch 失败 / issue-view 拉不到）一律只提示不阻断。**实证推翻了 issue 正文给的命令**：`--grep "Closes #11"` 会命中 `Closes #114`（子串匹配）；review 又逼出另一侧 —— `(clos | fix | resolv)[a-z]*` 会让 `still unresolved #11` / `not fixing #11` 命中，**把「还没修」报成「已修完」**，且补左边界还不够（`fix[a-z]*` 照样吃掉 `fixing`），最终按 **GitHub 真实关键字清单枚举**（没有进行时）。**#116 —— 宪法补撞车决策**：交付物被别人先做了不属既有「技术假设被证伪」，补为停机义务的子类 + 三行取舍表；review 逼出关键补充 —— **分类轴只有「谁更全面」是危险的**，「远端更全但有 bug」会被归进「弃己方」那行，故加前置「『更全面』不等于『更对』」，判不准或落表外走最保守那行；备份 tag 写出完整命令（与 `/rebase` `/finish` 逐字一致）而非只说「打个 tag」，因为这条可能在不经那两条流程时触发，而它的全部价值就在事后翻得到。配套 `platform_issue.py` 的 `issue-view` / `issue-list` 吐出归一 `state` / `stateReason`，赌注押在**两端词形一致的「closed」**（GitHub `CLOSED` / GitLab `closed` 小写同字，而「打开」两端是 `OPEN` vs `opened`），判不出一律算 `open`。**两条过程教训**：① 测试**并进脚本自带的 `--self-test`** 而非另起文件 —— review 查出它硬编码着旧 schema 期望值已经变红，而它才是 `routine-dev` 认的门禁，留两套等于新逻辑不在门禁覆盖内；② **验证脚本自身出错时最危险的形态是输出一份「看起来全绿」的结果** —— 抠正则的 `grep -o` 没匹配上、变量成空串，而空正则匹配一切，于是「全部命中」。③ 一度误判 `review-orchestrator` 不可用并绕过它，事后对照实验证明它没坏，**缺的是任务书里「拿不到子 agent 结果时怎么收尾」那一条** |
+| 57 | 开轮远端对齐与撞车决策 | ✨ 功能 | 需求管理 | round 55 撞车事故的两半（#114 + #116）一并收口。**#114 —— 开轮前先与远端对齐**：`/start` 此前完全不碰远端，issue 详情只读正文、轮次编号三源全是本地信号，于是多设备 + 云端 routine 并行下撞车只能等到 `/finish` 之后暴露（round 55 因此整版作废）。新增「远端对齐」为通用流程**第 1 步**（排最前是必要的：编号要用远端信号，撞车检查得赶在建 worktree / docs 之前）。**三个信号各补各的盲区**：issue 自身 `state`（平台权威、**不依赖提交信息约定** —— `/start` 是全局 skill，别的项目未必写 `Closes #N`；还能识别 `NOT_PLANNED` 即「有人决定不做」，与「做完了」处理方向相反）、已合入的关闭 commit（给人类拍板要看的证据）、**远端在途分支**（`--remotes=origin --not <主分支>`，覆盖「分支已做完、PR 还开着、issue 还 open」—— 本仓 routine 每周开 PR 却不自动合，前两个信号都看不见它；这一条是 issue 原文没想到的）。轮次编号三源扩五源；三条失败路径（无 origin / fetch 失败 / issue-view 拉不到）一律只提示不阻断。**实证推翻了 issue 正文给的命令**：`--grep "Closes #11"` 会命中 `Closes #114`（子串匹配）；review 又逼出另一侧 —— `(clos \| fix \| resolv)[a-z]*` 会让 `still unresolved #11` / `not fixing #11` 命中，**把「还没修」报成「已修完」**，且补左边界还不够（`fix[a-z]*` 照样吃掉 `fixing`），最终按 **GitHub 真实关键字清单枚举**（没有进行时）。**#116 —— 宪法补撞车决策**：交付物被别人先做了不属既有「技术假设被证伪」，补为停机义务的子类 + 三行取舍表；review 逼出关键补充 —— **分类轴只有「谁更全面」是危险的**，「远端更全但有 bug」会被归进「弃己方」那行，故加前置「『更全面』不等于『更对』」，判不准或落表外走最保守那行；备份 tag 写出完整命令（与 `/rebase` `/finish` 逐字一致）而非只说「打个 tag」，因为这条可能在不经那两条流程时触发，而它的全部价值就在事后翻得到。配套 `platform_issue.py` 的 `issue-view` / `issue-list` 吐出归一 `state` / `stateReason`，赌注押在**两端词形一致的「closed」**（GitHub `CLOSED` / GitLab `closed` 小写同字，而「打开」两端是 `OPEN` vs `opened`），判不出一律算 `open`。**两条过程教训**：① 测试**并进脚本自带的 `--self-test`** 而非另起文件 —— review 查出它硬编码着旧 schema 期望值已经变红，而它才是 `routine-dev` 认的门禁，留两套等于新逻辑不在门禁覆盖内；② **验证脚本自身出错时最危险的形态是输出一份「看起来全绿」的结果** —— 抠正则的 `grep -o` 没匹配上、变量成空串，而空正则匹配一切，于是「全部命中」。③ 一度误判 `review-orchestrator` 不可用并绕过它，事后对照实验证明它没坏，**缺的是任务书里「拿不到子 agent 结果时怎么收尾」那一条** |
 | 58 | 调度器自杀式重注册 | 🐛 修复 | CC 工具复用 | 开发项 16 埋下的自杀路径，macOS 侧（19 修的是 Linux 侧，二者对称）：`auto-update.sh → install.sh → scheduler/install.sh` 由 launchd 拉起时，`launchctl unload` 卸载的正是**承载着这条链本身**的那个 job —— launchd 杀掉该 job 名下全部进程，执行 unload 的 shell 当场死亡、下一行 `load -w` 永不执行，job 从此不存在，自动同步停摆到下次登录，然后再拉到更新就再自杀一次。**潜伏两个月靠三重掩护**：没更新可拉时压根不跑 install.sh（平时全绿）、失效窗口是「拉到更新→下次登录」（登录够勤它自己就好）、失败**全程零输出**。实证：全日志 6 次 pulling 只有第一次（job 尚未注册时）走到 `ok: updated to`，此后 5 次全死在同一位置。改为四路分支：内容一致且已加载→**早退**（主修复点，`unload` 零调用）、正跑在 job 内→只更新 plist 推迟到下次登录、其余→正常重注册**再查 `launchctl list` 验证**。**顺带挖出第二个 bug**：`launchctl load` 在路径不存在 / plist 损坏 / 重复加载三种失败模式下**一律 exit 0**，而原码正用它判成败 —— 那个 `else` 是永远进不去的死代码、`2>/dev/null` 还吞掉唯一的失败信号，**注册失败被报成绿色的成功**（wrapper 原则「失败怎么向外传」的又一实例）。**修复自交付**：auto-update 先 pull 再跑 install.sh，拉到修复那次执行的已是新码，存量机器 plist 一致且 job 已加载正好命中早退分支 —— 前提是**不动 plist 模板**（动了就内容失配、先自杀一次），故一个字节没改。另加 in-flight 标记消除静默失败：只在 install.sh 成功时清除，于是被硬杀与非零退出都留痕并触发下次补跑（二者留下的是同一个洞，review 抓到我只堵了硬杀那一支）；标记检测压到所有 skip 分支之后、且时间戳只在首次落标记时写（「已经坏了多久」正是上次静默四天缺的那个信号）。**scheduler/ 从零单测到 14 条**：python3 驱动真实 bash、产品代码零改动即可测，PATH 收窄成**白名单沙盘**让 `systemctl` 在「systemd 缺席」用例里真的不存在（而非碰巧这台机器没有）。**两次自我修正**：① 给机制加职责后没回头复查依赖旧职责的判断；② 测试把 locale 钉死在**安全的一侧** —— 比「跟随宿主」更隐蔽，因为它看起来完全符合「显式指定环境」的要求 |
 | 59 | routine-dev 简化 | 🏗️ 重构 | 云端自动化 routine | 承接「云端 routine 机制性失败、长期不该依赖它做复杂的事」这条判断，给 `/routine-dev` 减重。开工前按节实测其构成，结论是**占大头的不是安全边界**（那部分全是短禁令、约 3.5 KB），而是「一次跑多条、出多个 PR、还要管在途 PR」的衍生债加一层为省分诊 token 引入的缓存。三刀：**删整套 `auto:skip` 缓存**（含事件驱动复活 workflow 与 label 定义）、**删 Step 0.5 在途 PR 照料**（rebase 解冲突 + force-push，冲突改交给人在本机处理）、**退回「一次运行只出一个 PR」**（合批不变式 / 并集簿记 / cherry-pick 退路整体蒸发）。刀 C 的依据恰恰写在被它删掉的 reference §6 里：那套机制在本仓的**实测结果本来就是「一次运行通常只出 1 个 PR」**（几乎每批都要动 README 或 GLOBAL_AGENTS 那两张登记表），实际吞吐是 1 就别为「理论上是 N」养一整套编排。**连带把写权限面收紧为穷举三样**：push 一条新分支 / 开一个 PR / 编辑该 PR 的描述——不打任何 label、不发任何评论、不 force-push；原先「绝不给 **PR** 打 label」要配一整节辨析证明「给 issue 打是安全的」，现在**能力不存在比「有能力但按规则不用」强一档**，直接收到零、那节辨析随之不必要。**两轮重档 review 报的 3 条全是本轮自造的，且前两条同源**：① 刀 C 把「放弃这条」升格成「放弃本次运行」，而刀 A 恰好拿掉了唯一的跨运行记忆——排序是纯函数、分诊又短路，队首一条确定性失败会每周三次原地复现、把后面的 issue **永久饿死**，零 PR 意味着无人知晓；**两刀单独看都干净，叠起来才有**。② 「共享登记文件也算落点」这条通则原先**寄生在合批节里**，是撞车预判真正的判据，跟着刀 C 一起被删漏、预判形同虚设。③ 修复本身又漏一层：`git restore` 对已 `git add` 的是 no-op、对未跟踪新文件无效，而 `git checkout` 会把残留**原样带进下一条候选的分支**——撞红线那条分岔尤其致命（A 正因写到 `agents/` 才被放弃，残留却进了 B 的 PR，而开 PR 前的复核只比对在途 PR 落点、**不重新判红线**）。修法分别是「换下一条候选、最多试 3 条」「通则补回 1.2」「规范清理块 `git reset --hard` + `git clean -fd` + 切回 + 删分支 + 复检 porcelain 为空」。**明确否决**用跨运行持久标记根治饿死——它与本轮刚收紧的「绝不打任何 label」直接冲突，用安全边界换吞吐不划算，否决连同理由写进 SKILL 的「残余」块而非悄悄不做。量化：SKILL.md 19,356 → 15,999 字符、reference 5,240 → 3,208、指令面 195,675 → 190,162（−2.8%）。**但它仍是指令面最大的单文件**（15,999，第二名 `playbooks/python.md` 14,750、宪法 11,107），只是对宪法的差距从 8,249 收窄到 4,892——想找下一个精简目标的人别被这轮的降幅误导。**局限**：没打到 PROMPT 定的 −35%（实际 −18%），差额是那两处加固及其 WHY，不为对数字压回去；`/review-loop` 2 轮上限用满、第 2 轮所修的清理块未经独立 context 复审（已留痕）；活锁只降级未根除（3 次上限内若始终是同样那几条排前面且都失败，后面的仍轮不到）；全部改动**未经真实云端运行验证**。**教训**：删除型重构要先查「这一节里有没有别处依赖的判据」——登记文件通则就是这么被误删的 |
 | 60 | design 讨论式方案 skill | ✨ 功能 | 讨论式方案设计 | 新增 `/design`：需求本身还模糊时，在多轮对话里逐步收敛出框架级方案，**方案本身即产出**。plan mode 不合适——产物不进仓库、不记讨论过程、退出即执行、长讨论被上下文压缩丢决策。落点 `docs/design/<中文主题>/`（不编号、不占轮次号；不放顶级 `design/`：`docs/design/` 正是理想结构 `docs/design` + `docs/develop` 的一半，且顶级 `design/` 在前端项目易撞设计稿目录），只两份文件：`DISCUSSION.md` 是历史、只追加（阶段 0 原样保留背景，之后每阶段记输入 / 分析 / 决策 / 否决，决策即时写入以抵御上下文压缩、支撑 `--resume`），`DESIGN.md` 是快照、整体改写、带 `讨论中` / `已定稿` / `已搁置` 状态。不开 worktree、不写代码、不拆 issue、不进 DEVTREE、不写 SUMMARY，宪法同步写明豁免。**顺带根治一个反复出现的坑**：在 worktree 内跑 `install.sh` 会把两端全局软链整体改指到 worktree、删除即断链，round 31 / 51 / 52 / 53 / 54 都靠文档提醒绕开，本轮又实际踩中——改为 `install.sh` 入口硬拦（比较 git-dir 与 git-common-dir 物理路径，给出主 checkout 下的正确命令），7 项沙盘测试先红后绿，首版实现当场撞上 `$REPO_DIR）` 紧贴全角括号的 `set -u` 中止（shell playbook §2） |
@@ -307,8 +309,8 @@ graph TD
 | 64 | 个人 Harness 零基重构 | 🏗️ 重构 | 全局宪法治理 | 清理通用说教与事故叙事，收窄领域加载范围，允许规则退役并保留个人偏好、自动化与权限边界。 |
 | 65 | 收尾提交原则与询问精简 | ✨ 功能 | 开发项收尾 | 按交付单元组织收尾提交，删除固定归档询问，默认清理本轮工作树、分支与备份，支持明确保留。 |
 | 67 | 开发会话标题自动化 | ✨ 功能 | 开发项收尾 | 通过现有 Codex App Server 自动设置轮次标题和完成状态，接入 /start、/finish；精确定位当前会话并读回核验。 |
-
----
+| 68 | 精简人工确认 | ✨ 功能 | 开发项收尾 | 减少人工轮重复确认：明确任务写完计划即实施，/finish 授权本地 FF 与默认清理，设计主题复用工作树归档条件 |
+| 69 | DSH 三端配置接入 | 📦 工程 | 多 Agent 兼容 | 把 DeepSeek Harness 接成第三个使用端：install.sh 部署共享 agents 根规则入口，review-loop 增加 DSH 委派入口，CC 的 MCP 服务器迁入 DSH profile |
 
 ## Epic 结构
 
@@ -339,7 +341,7 @@ graph TD
 #### 多 Agent 兼容
 
 - 状态：进行中
-- 轮次：20, 22, 61
+- 轮次：20, 22, 61, 69
 
 #### 全局宪法治理
 
@@ -361,7 +363,7 @@ graph TD
 #### 开发项收尾
 
 - 状态：已完成
-- 轮次：1, 13, 21, 23, 26, 65, 67
+- 轮次：1, 13, 21, 23, 26, 65, 67, 68
 
 #### 轻量开发流
 
@@ -406,7 +408,3 @@ graph TD
 
 - 状态：进行中
 - 轮次：29
-
-```
-
-```
