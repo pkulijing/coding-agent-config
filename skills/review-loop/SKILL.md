@@ -42,7 +42,7 @@ review 的对象是**整个工作树的全部改动** —— `/commit` 调本 sk
 
 ### 编队约束
 
-模型与思考档：CC 取 `agents/*.md` frontmatter，Codex 取 `agents/codex-review.toml`，DSH 取 `agents/dsh-review.toml`；不得继承主会话或临时更换。数量与角度按下表，只有两档，不自行加码或减配。审查在独立子 agent 中进行，能力失败才走 Step 5。范围限本次 diff、调用点、被调方与紧邻上下文，不全库扫描。
+模型与思考档：CC 取 `agents/*.md` frontmatter，Codex 取 `agents/codex-review.toml`，DSH 取 `agents/dsh-review.toml`（路由与档位由 DSH 入口解析：路由即母对话路由，思考档目标是该文件里的值，目标档该路由不支持时取最高可用档并写明）；不得临时更换或临时减配。数量与角度按下表，只有两档，不自行加码或减配。审查在独立子 agent 中进行，能力失败才走 Step 5。范围限本次 diff、调用点、被调方与紧邻上下文，不全库扫描。
 
 | 档 | 编队（`subagent_type` × 数量 → 角度） | 触发 |
 | --- | --- | --- |
@@ -76,12 +76,12 @@ review 的对象是**整个工作树的全部改动** —— `/commit` 调本 sk
 
 DSH 的委托深度上限是 1（子 agent 再调 `subagent` 会被拒），所以**没有 orchestrator 子 agent**：主会话先读 `~/.coding-agent/agents/dsh-review.toml`，再按档位表**直接并行起 N 个 reviewer**，每个 reviewer 一个角度；主会话自己按下方 orchestrator 任务书的六条执行，只是不再作为子 agent 运行。
 
-1. **每次调用都显式传 `provider`、`model`、`reasoning_effort`**：普通 reviewer 取 `[reviewer]`，⑤ 取 `[deep_reviewer]`。省略这些参数时子 agent 继承主会话 route，等于破坏「不继承主会话」。
+1. **路由与档位要先解析再传**：用 `list_subagent_models` 依次取授权 provider、该 provider 的 model、该 model 的思考档，然后显式传 `provider` / `model` / `reasoning_effort` 三者（DSH 拒绝只传 effort）。没有 model-selection 白名单时授权集只有母对话路由一条，传它就是跟随主会话。思考档取 `agents/dsh-review.toml` 的目标档（`[reviewer]`；⑤ 取 `[deep_reviewer]`），该路由不支持就取它最高可用档。实际路由与档位写进结果顶部；目标档没拿到要写明，不许写成「已钉死」。没有 `list_subagent_models` 工具时三个字段全不传，按平台规则回落母对话路由，并注明「档位未固定」。
 2. `cwd` 传第 4 步取的绝对仓库根；任务书必须自带三样：下方「各端共用」的共用约束、对应的 `agents/code-reviewer.md`（⑤ 用 `code-reviewer-deep.md`）正文、角度清单原文。DSH 没有命名 agent 类型可继承角色定义，这两份正文是唯一的载体（不把 CC frontmatter 当模型配置）。另写明「只读不写、不提交、不再派生子 agent」。
 3. **并行起**（同一轮发出全部调用），等全部返回再汇总；某个 reviewer 没交出 finding 列表时，按角度清单原文自己补审该角度，不能当 clean 计入。
 4. DSH 对子 agent 没有结构性只读限制，只读由任务书约束 —— 结果须如实说明，不得宣称工具已强制只读。
-5. 汇总（去重、置信打分、探针验证）在主会话完成：独立 context 的损失仅限这一层，**每个角度的审查仍在独立 context 中**。结果须注明「汇总在主会话」，但不据此进入 Step 5 降级链 —— 角度、模型档与 rubric 都没有减配。
-6. 模型名或思考档不可用时算明确失败，按 Step 5 处理；不许悄悄换模型或继承主会话档位。
+5. 汇总（去重、置信打分、探针验证）在主会话完成：独立 context 的损失仅限这一层，**每个角度的审查仍在独立 context 中**。结果须注明「汇总在主会话」，但不据此进入 Step 5 降级链 —— 角度与 rubric 都没有减配；档位按该路由支持的档执行（未能固定也写明），不得宣称「无减配」。
+6. 路由被 Session 策略拒绝（`child LLM route "..." is not allowed for this Session`）**不算编队能力缺失**：按第 1 条改用母对话路由重试一次。仍调不起来（provider 未注册、适配器报错）才算明确失败，按 Step 5 处理；换路由或降档都要写进结果顶部。
 
 ### CC 委派入口
 
@@ -127,7 +127,7 @@ DSH 的委托深度上限是 1（子 agent 再调 `subagent` 会被拒），所�
 
 **② 的委派 prompt 必须自带这两条**（①档由 agent 定义兜住，通用类型没有）：
 
-- **传 `model` 入参**：CC 值照抄 `agents/code-reviewer.md` 的 frontmatter；Codex 按 `agents/codex-review.toml` 同时传 `model` 和 `reasoning_effort`，`fork_turns="none"`；DSH 按 `agents/dsh-review.toml` 同时传 `provider`、`model` 和 `reasoning_effort` —— 不传就跟着主会话跑。这是 Step 4「不要传 `model`」的唯一例外。
+- **传 `model` 入参**：CC 值照抄 `agents/code-reviewer.md` 的 frontmatter；Codex 按 `agents/codex-review.toml` 同时传 `model` 和 `reasoning_effort`，`fork_turns="none"`；DSH 按 Step 4 DSH 入口第 1 条解析出 `provider`、`model` 和 `reasoning_effort` 后传入。这是 Step 4「不要传 `model`」的唯一例外。
 - **写死「只读不写：不修改任何文件」** —— 通用类型没有 `disallowedTools` 兜底，漏了这句 reviewer 真的能改工作树，而 review 阶段改动是静默的。
 
 **② 优先保住独立 context**。模型、思考档、结构性只读是否保住，按实际工具参数与限制逐项报告，不按交互/无人值守环境猜测。③ 丢失独立 context，必须显著说明。
@@ -137,14 +137,14 @@ CC 命名 agent 实际返回未注册时，可按下述门槛尝试通用类型�
 **降级门槛（三条硬规则，任一不满足就不许降）**：
 
 1. **先真核验一次。** 要么**实际发起过一次 Agent 调用并失败**，要么**核对确认 Agent 工具不在当前工具列表里**（受限环境下无从发起，核对工具列表就是那次实际核验）—— 两者都是可复述的实际观察。纯推断（「我判断它起不来 / 不该调」）不构成理由。
-2. **只有能力缺失才算失败。** 穷举：Agent 工具不在当前工具列表里、调用直接报错、子 agent 起不来、返回的不是 finding 列表。**策略类指令一律不算** —— 「除非用户要求否则别调 Agent / 别用 workflow」这类平台通用系统提示，在用户走 `/commit` / `/review-loop` 时**条件已被满足**（宪法要求 commit 前委派独立 context reviewer，这就是那个 user request），它是策略约束、不是能力缺失。真拿不准 → **停机问人**，不许自己挑降级路径：在代价不同、计划未预先授权的方案间替人类选择是方向性决策。
+2. **只有能力缺失才算失败。** 穷举：Agent 工具不在当前工具列表里、调用直接报错、子 agent 起不来、返回的不是 finding 列表。**策略类指令一律不算** —— 「除非用户要求否则别调 Agent / 别用 workflow」这类平台通用系统提示，在用户走 `/commit` / `/review-loop` 时**条件已被满足**（宪法要求 commit 前委派独立 context reviewer，这就是那个 user request），它是策略约束、不是能力缺失。**子 agent 路由被 Session 策略拒绝也不算**（见 DSH 委派入口第 6 条），先进路由解析重试。真拿不准 → **停机问人**，不许自己挑降级路径：在代价不同、计划未预先授权的方案间替人类选择是方向性决策。
 3. **一次只降一档，门槛逐档适用。** 核验到 ① 失败只授权你走 ②；要再落到 ③，必须**对 ② 另做一次核验**（通用 agent 类型也起不来）。**「① 起不来」永远不构成走 ③ 的理由**。
 
 **无人值守例外**：云端 routine 等无人在环的会话**没有「停机问人」这个选项** —— 判不准时按降级处理，并在留痕里写明「门槛判定存疑」及实际观察到的表现。挂起等于整次运行报废，比一次留痕充分的降级更糟。
 
 降级后**角度覆盖不打折**：② 由主会话读 `references/angles.md`、把对应小节**逐字原文**转给每个 reviewer；③ 由主会话自己逐角度过一遍 diff。两者都用同一套置信 rubric 过滤，并在结果**顶部显著标注** —— **两档的标注不通用，别混用**：
 
-> **②** ⚠ 本次编队降级为**通用 agent 类型** —— 独立 context 未失，`model` 已按当前端的编队配置钉死、只读已由委派 prompt 约束；能力损失逐项按实报告：CC 通用类型可能未固定 effort；Codex 支持参数且已传入时不能声称 effort 丢失；DSH 必须显式传参，已传入时同样不能声称丢失；各端通用 reviewer 的只读均可能仅由任务书约束。
+> **②** ⚠ 本次编队降级为**通用 agent 类型** —— 独立 context 未失，`model` 已按当前端的编队配置解析（DSH 为路由跟随主会话）、只读已由委派 prompt 约束；能力损失逐项按实报告：CC 通用类型可能未固定 effort；Codex 支持参数且已传入时不能声称 effort 丢失；DSH 已显式传参时同样不能声称丢失，但目标档未拿到要按 DSH 入口第 1 条写明；各端通用 reviewer 的只读均可能仅由任务书约束。
 > 降级原因：<那次调用失败的实际表现：报错原文>
 
 > **③** ⚠ 本次为**主会话结构化自审**（未经独立 context 把关）—— 开发对话的先入之见在场，难复现问题极易漏判。另需告知用户「主 context 会因此增大」。

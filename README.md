@@ -45,7 +45,7 @@ Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`
 | [paper-read](skills/paper-read/SKILL.md) | 论文阅读笔记 |
 | [routine-dev](skills/routine-dev/SKILL.md)、[routine-slim](skills/routine-slim/SKILL.md) | 自动开发明确需求、定期清理指令 |
 
-review 规格以技能、[Codex 角色配置](agents/codex-review.toml)与 [DSH 角色配置](agents/dsh-review.toml) 为准；CC 定义在 [agents](agents/)。三个平台均使用独立 context，能力不足时按既定链降级并报告。DSH 的委托深度上限为 1，编队由主会话直启 reviewer，角度与模型档不变。它不能证明模型质量不会下降，也不能消除同模型盲区。
+review 规格以技能、[Codex 角色配置](agents/codex-review.toml)与 [DSH 角色配置](agents/dsh-review.toml) 为准；CC 定义在 [agents](agents/)。三个平台均使用独立 context，能力不足时按既定链降级并报告。DSH 的委托深度上限为 1，编队由主会话直启 reviewer，角度不变；reviewer 路由跟随主会话。它不能证明模型质量不会下降，也不能消除同模型盲区。
 
 ## 规则的放置与维护
 

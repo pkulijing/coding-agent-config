@@ -2,16 +2,14 @@
 # 与 agents/codex-review.toml 同构，差异只来自平台能力：
 #   - DSH 委托深度上限为 1（子 agent 再调 subagent 会被拒），不存在 orchestrator 子 agent，
 #     汇总留在主会话，因此不设 [orchestrator] 角色。
-#   - 本机唯一 route deepseek-account/deepseek-flash 的思考档为 off/low/high/max，没有 medium；
-#     普通 reviewer 取 high（默认平衡档），深审取 max。不要照抄 CC 的 medium。
+#   - 路由跟随主会话，这里只钉思考档：DSH 没有 model-selection 策略时，显式选路只允许
+#     「母对话当前路由」，钉死厂商路由一换部署就被拒。provider / model 不在此钉：不传即跟随主会话，
+#     要钉档位时由 /review-loop 的 DSH 入口查出该路由再显式传。
+#   - 普通 reviewer 取 high（平衡档），深审取 max；该路由没有 max 时取它最高可用档并留痕。
 # 改本文件即改审查强度，按 /review-loop 的规则审查。
 
 [reviewer]
-provider = "deepseek-account"
-model = "deepseek-flash"
 reasoning_effort = "high"
 
 [deep_reviewer]
-provider = "deepseek-account"
-model = "deepseek-flash"
 reasoning_effort = "max"
