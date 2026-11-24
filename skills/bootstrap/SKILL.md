@@ -35,7 +35,7 @@ args 非空时可作为问题 1 或 2 的输入；不足部分仍需问全。
 
 ## 开发流程
 
-本项目遵循 [全局 Constitution](https://github.com/pkulijing/coding-agent-config/blob/master/GLOBAL_AGENTS.md) 的开发流程。正式轮次先在原生 Plan 模式调查和审计划，批准后在 `docs/<N>-<中文主题>/PLAN.md` 保存完整计划。轻量改动由 `/quick` 自主验证并提交。
+本项目遵循 [全局 Constitution](https://github.com/pkulijing/coding-agent-config/blob/master/GLOBAL_AGENTS.md) 的开发流程。正式轮次先在当前模式中调查和审计划，无需切换原生 Plan 模式，批准后在 `docs/<N>-<中文主题>/PLAN.md` 保存完整计划。轻量改动由 `/quick` 自主验证并提交。
 ```
 
 ## Step 2 · 写 AGENTS.md 与兼容入口
