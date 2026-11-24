@@ -17,6 +17,8 @@ description: 完成当前开发项：核对计划验收、关联 issue、提交�
 | `--no-cleanup` / “不要清理” | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `--no-rebase` | ✗ | ⚠️ 仅当已可 FF | （随其它开关） | （随其它开关） | （随其它开关） |
 
+**可选历史整理**：显式传 `--squash` 才在 7.2 之后、7.3 之前执行 7.2-squash，将本轮多个未发布提交压成一个；默认保留原提交。此开关授权在核实范围、备份并告知后改写本轮未发布历史，不授权改写已推送或共享历史，也不改变合入、清理与 push 开关。可与 `--no-rebase`、`--no-merge`、`--no-cleanup` 组合；仅 0–1 个提交时无需压缩。
+
 `--no-merge` 保留分支与备份但默认清理 worktree；`--no-rebase` 只有已可 FF 才能合入。`--no-cleanup` 仅跳过清理，可与其它开关组合，优先保留 worktree、分支与 backup tag；不自动禁止合入。只要求保留某一对象时保留该对象及其必要依赖，继续清理其余可安全删除的本轮对象。
 
 例如保留 worktree 时也保留其正在使用的分支；只保留 backup tag 不妨碍清理已合入的分支与 worktree。
@@ -132,7 +134,7 @@ Closes #20
 ```
 
 - **不在 worktree**（含 `--no-worktree` 轮）→ 打印一行「non-worktree round，跳过 worktree 收尾」，直接进 Step 8。
-- **在 worktree** → **读 `references/worktree-finish.md`** 按其 7.1–7.5 执行（诊断 / 备份 + rebase / FF merge / 默认清理 / 不自动 push），各开关的跳过分支以上方对照表为准。已有授权与明确的跳过、保留指令按其范围执行。
+- **在 worktree** → **读 `references/worktree-finish.md`** 按其 7.1–7.5 执行（诊断 / 备份 + rebase / 可选 squash / FF merge / 默认清理 / 不自动 push），各开关的跳过分支以上方对照表为准。已有授权与明确的跳过、保留指令按其范围执行。
 
 ## Step 8 · 交付说明与轻量提示
 
