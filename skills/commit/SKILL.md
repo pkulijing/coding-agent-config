@@ -7,8 +7,6 @@ description: 按照 git 规则自动分析变更并提交代码
 
 **提交粒度**：以可独立审阅、回退和说明目的的交付单元提交。独立功能、修复、隔开的交付、必要部署与验收记录可分别提交；同一次可连续完成的收尾先汇齐适用文档，不把“已获授权”“准备合入”等对话状态各做一次提交。影响判断的新事实、已发布或被引用的记录、审计与恢复点可独立保留，不机械限制一轮提交数。优先避免产生新碎片；普通提交不因此自动 amend、squash 或改写已发布/共享历史，历史整理仍须核对范围、备份与授权。
 
-**design 文档**：`/design` 产出的 `docs/design/<主题>.md` 按普通提交流程处理，**不带 `[round N]` 前缀**，message body 可带 `Design-Topic: <主题>`；默认新增提交，不 amend、不改写已发布历史。
-
 1. 运行 `git status` 查看当前变更状态
 2. 运行 `git diff` 查看具体变更内容（包括已暂存和未暂存的）
 3. 运行 `git log --oneline -5` 了解近期 commit 风格
@@ -20,14 +18,14 @@ description: 按照 git 规则自动分析变更并提交代码
      - Node.js: `package.json` 里有 `scripts.lint` → `npm run lint`（或 `yarn lint` / `pnpm lint`）；monorepo 要覆盖全部包：`npm run lint --workspaces` / `pnpm -r lint`（yarn 的 classic 与 berry 写法不同，用前先查）
      - Rust: `Cargo.toml` → `cargo clippy --all-targets -- -D warnings`
      - Go: `go.mod` → `go vet ./...`
-     - 文档形状: 仓库根有 `scripts/docs_lint.py` → `python3 scripts/docs_lint.py`（`/finish` 只在编码轮跑，这里覆盖 `/design` 等纯文档提交）
+     - 文档形状: 仓库根有 `scripts/docs_lint.py` → `python3 scripts/docs_lint.py`（含单独提交的计划文档）
      - **一条都没命中**（或命中但工具配置缺失）→ **跳过这一步**，继续往下走
    - **本轮引入、修复方式明确且不改变已确认方案的 lint 错误**：自主修复，重跑 lint 和受影响验证；修改后的 diff 须按第 4 步既有 review 契约复审（轮次与上限以 `/review-loop` §6.4 为真源，本步不复述）；review 若再修文件，则重新执行本步。**审查环已停环（满 2 轮或提前振荡）时不自动修**：lint 仍未通过就按失败出口中止提交并报告，不带未审改动进提交。
    - 原有无关问题、归属不明的改动、需要方向性取舍或无法在上述范围内修复的失败：暂停提交，集中报告错误、影响与可选方案，等用户决定；无人值守按调用技能的失败出口处理。
    - 未经用户明示授权，不得用 `--no-verify`、关闭规则或修改检查范围等方式绕过门禁。
 6. **探测轮次 N**（决定是否加 `[round N]` 前缀，给跨轮追溯补一层约束）：
    - **主信号**：当前分支名匹配 `^(?:codex/)?round(\d+)(-|$)` → 取第一个捕获组为 N（兼容带或不带 `codex/` 的 round 分支）。
-   - **兜底**（`--no-worktree` 等非 round 分支）：看本次变更涉及的文件里有没有 `docs/<N>-*` 路径（单文件或历史目录；`git diff --cached --name-only` 与 `git status --porcelain` 的并集），命中唯一的 `<N>` 则取之。
+   - **兜底**（`--no-worktree` 等非 round 分支）：看本次变更涉及的文件里有没有 `docs/<N>-*` 路径（计划目录或旧轮次路径；`git diff --cached --name-only` 与 `git status --porcelain` 的并集），命中唯一的 `<N>` 则取之。
    - 两路都判不出 N → **不加前缀**，走普通 commit，不要硬凑。
 7. 分析所有变更，生成 commit message：
    - 使用中文

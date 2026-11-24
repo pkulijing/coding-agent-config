@@ -281,3 +281,31 @@ def test_nested_stray_doc_is_reported(tmp_path):
     write(tmp_path, "docs/misc/notes.md", "# 笔记\n")
     problems = load_module().check(tmp_path)
     assert any("闭集" in p for p in problems)
+
+
+PLAN = GOOD_ROUND + "\n".join(f"## {s}\n\n内容。\n" for s in ("目标", "关键决策", "实施提纲", "验收"))
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+@pytest.mark.parametrize("name,body,valid", [
+    ("PLAN.md", PLAN, True),
+    ("PLAN.md", PLAN.replace("## 验收", "## 其它"), False),
+    ("PLAN.md", PLAN.replace("> 来源：", "> 注："), False),
+    ("SUMMARY.md", GOOD_ROUND, False),
+    ("assets/DEVTREE.md", GOOD_ROUND, False),
+])
+def test_new_round_plan_cli(tmp_path, explicit, name, body, valid):
+    path = write(tmp_path, "docs/71-新轮/" + name, body)
+    args = [sys.executable, str(SCRIPT), "--root", str(tmp_path)]
+    result = subprocess.run(args + ([str(path)] if explicit else []), capture_output=True)
+    assert result.returncode == (0 if valid else 1), result.stdout
+
+
+def test_new_round_requires_plan(tmp_path):
+    (tmp_path / "docs/71-空轮").mkdir(parents=True)
+    assert any("PLAN.md" in problem for problem in load_module().check(tmp_path))
+
+
+def test_new_round_rejects_flat_record(tmp_path):
+    write(tmp_path, "docs/71-新轮.md", GOOD_ROUND)
+    assert load_module().check(tmp_path)

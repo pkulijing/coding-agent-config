@@ -17,7 +17,7 @@
 | `user.config.example.env` | 配置示例；真实值在仓库外 `~/.coding-agent/config.env`，迁移保留原件、用户值优先 |
 | `uv.config.base.toml` | 仅在用户 uv 配置缺失时初始化 |
 | `scheduler/` | 自动同步，任务名 coding-agent-config，状态和日志在 `~/.coding-agent/` |
-| `.worktrees/`、`docs/` | 隔离开发工作树、轮次记录与 ADR |
+| `.worktrees/`、`docs/` | 隔离开发工作树、批准版计划及历史记录 |
 
 ## 开发约束
 

@@ -1,6 +1,6 @@
 # worktree 创建细则（`/start` 通用流程第 4 步展开）
 
-> `/start` 通用流程第 4 步读本文。**args 含 `--no-worktree` 时整节跳过**，在当前分支直接开发、轮次记录落在当前工作树；`/finish` 收尾时检测到非 worktree 会跳过 worktree 收尾，对称无悬空分支。
+> `/start` 通用流程第 4 步读本文。**args 含 `--no-worktree` 时整节跳过**，在当前分支直接开发、批准版 PLAN.md 落在当前工作树；`/finish` 收尾时检测到非 worktree 会跳过 worktree 收尾，对称无悬空分支。
 
 默认每轮开发在独立 git worktree 内进行，让多轮可并行、互不污染主工作树：
 

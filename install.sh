@@ -380,16 +380,31 @@ deploy_shared() {
 deploy_skills() {
     local dst="$1" legacy="${2:-}" skill_dir skill_name
     mkdir -p "$dst"
+    local retired target owner
+    for retired in "$dst/design" ${legacy:+"$legacy/design"}; do
+        [ -L "$retired" ] || continue
+        target="$(readlink "$retired")"
+        case "$target" in
+        /*/skills/design) owner="${target%/skills/design}" ;;
+        *) continue ;;
+        esac
+        if [ "$owner" = "$HOME/.coding-agent" ] || [ "$owner" = "$REPO_DIR" ] ||
+           printf '%s\n' "$CCG_MANAGED_ROOTS" | grep -Fxq -- "$owner"; then
+            rm -f "$retired"
+            info "已清理退役技能：$retired"
+        fi
+    done
     if [ -n "$legacy" ]; then
         for skill_dir in "$legacy"/*; do
             [ -L "$skill_dir" ] || continue
+            [ "$skill_dir" != "$legacy/design" ] || continue
             unlink_legacy_dir "$skill_dir" "skills/$(basename "$skill_dir")"
         done
     fi
     for skill_dir in "$REPO_DIR/skills"/*/; do
-        [ -d "$skill_dir" ] || continue
+        [ -f "$skill_dir/SKILL.md" ] || continue
         skill_name="$(basename "$skill_dir")"
-        local existing="$dst/$skill_name" target owner
+        local existing="$dst/$skill_name"
         if [ -e "$existing" ] || [ -L "$existing" ]; then
             target="$(readlink "$existing" 2>/dev/null || true)"
             owner="${target%/skills/"$skill_name"}"

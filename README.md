@@ -26,7 +26,7 @@
 
 ## 日常工作流
 
-明确需求用 `/start`：在项目 `.worktrees/` 隔离工作，落一份 ≤15 行轮次记录（来源、完成标准），目标与验收明确即可实施；Agent 自主提交，每次提交前独立 review，最后 `/finish` 补决策记录、合入与清理。轻量改动用 `/quick`；尚需讨论的方案用 `/design`，单文件、在主 checkout 提交。
+正式开发用 `/start` 进入原生 Plan 模式，先调查现状并给出方案摘要和完整提纲。用户批准一次后创建工作树，将批准版保存在 `docs/<N>-<中文主题>/PLAN.md`，再实施、验证和审查。只讨论时留在聊天里。局部小改用 `/quick`，自主调查、验证和提交，免计划审批与轮次文档；超范围交回调用方。
 
 Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`；`/finish` 完成适用的提交与收尾后追加 `-已完成`。通过 [会话标题工具](scripts/codex_session_title.py) 调用现有 App Server 并读回核验，不依赖自动标题摘要。工具使用 `uv run --script`，要求 uv、Python ≥3.11（由 uv 准备）及脚本声明的 websockets 依赖；首次运行可能下载运行时或依赖。当前支持暴露 Unix 控制 socket 的主机，要求 `CODEX_THREAD_ID`，默认从 `codex app-server daemon version` 发现服务，也可用 `--socket` 指定已知绝对路径。手机远程复用主机上的会话，无需手机端安装；客户端显示刷新需实际核对。连接失败会明确报告并继续开发，不启动服务、不改数据库。新脚本和既有技能随主 checkout 的目录软链更新生效。
 
@@ -36,7 +36,6 @@ Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`
 | --- | --- |
 | [backlog](skills/backlog/SKILL.md)、[triage](skills/triage/SKILL.md) | 创建 issue、只读盘点与排序 |
 | [start](skills/start/SKILL.md)、[finish](skills/finish/SKILL.md) | 开轮对齐与开发收尾 |
-| [design](skills/design/SKILL.md) | 方案讨论，产出单文件 `docs/design/<主题>.md` |
 | [quick](skills/quick/SKILL.md) | 不落轮次记录的小改，自动提交；`--worktree` 隔离工作区 |
 | [commit](skills/commit/SKILL.md)、[review-loop](skills/review-loop/SKILL.md) | 提交、独立审查与修复迭代 |
 | [rebase](skills/rebase/SKILL.md)、[pybump](skills/pybump/SKILL.md) | 直线历史整理、Python 版本发布准备 |
@@ -84,4 +83,4 @@ review 规格以技能、[Codex 角色配置](agents/codex-review.toml)与 [DSH 
 
 ## 回退
 
-轮次记录与 commit body 承担验证、行为变化和回退点。已合入版本通过 revert 对应提交回退，保留后来工作，不重置共享历史；新增/删除技能或配置基线变化后，从主 checkout 重跑安装。第 64 轮的具体范围与回退记录见 [个人 Harness 重构](docs/64-个人Harness零基重构/SUMMARY.md)。
+批准版计划与 commit body 承担验证、行为变化和回退点。已合入版本通过 revert 对应提交回退，保留后来工作，不重置共享历史；新增/删除技能或配置基线变化后，从主 checkout 重跑安装。第 64 轮的具体范围与回退记录见 [个人 Harness 重构](docs/64-个人Harness零基重构/SUMMARY.md)。

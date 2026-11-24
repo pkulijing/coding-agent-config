@@ -1,23 +1,9 @@
 #!/usr/bin/env python3
 """docs_lint.py — 文档产出闭集的机械检查。
 
-范围只覆盖新形态文档，存量 `docs/<N>-<中文描述>/` 历史目录不在其内：
-
-    docs/<N>-<中文描述>.md   轮次记录
-    docs/adr/<NNNN>-*.md     决策记录（ADR）
-    docs/design/*.md         方案（其下 `assets/` 视为资产，不做形状检查）
-
-规则：
-
-    L1  `docs/` 下只允许上述三种形态；`docs/DEVTREE.md` 是冻结的历史快照，保留为白名单
-    L2  同一目录内 ADR 编号不得重复
-    R1  每份文件有一行 `> 读者：<谁> · <什么问题>`（出生登记）
-    R2  轮次记录 ≤15 行，且含 `> 来源：` 与 `> 完成标准：`
-    R3  ADR 文件名 `<4 位数字>-<slug>.md`，含 `## 背景` / `## 决策` / `## 后果`，≤40 行
-    R4  方案文件含 `> 状态：`，取值 `讨论中` / `已定稿` / `已搁置`；`-discussion.md` 只要求 R1
-
-规则只查形状，不查内容价值：写一句敷衍的「读者」骗过脚本是允许的，脚本的存在
-只是让人在出生时被迫回答一次那个问题。
+本仓自第 71 轮起使用 docs/<N>-<主题>/PLAN.md。检查批准版的读者、来源、
+目标、关键决策、实施提纲与验收，并报告同轮多出的 Markdown。历史轮次目录、
+旧单文件、设计、ADR 与冻结的开发树继续使用原有兼容规则。
 
 用法：
 
@@ -33,7 +19,10 @@ from collections import Counter
 from pathlib import Path
 
 ROUND_NAME_RE = re.compile(r"^\d+-.*\.md$")
-ROUND_DIR_RE = re.compile(r"^\d+-")
+ROUND_DIR_RE = re.compile(r"^(\d+)-")
+# 本仓启用新格式的首轮；编号属于本仓历史，不作为共享技能的开轮条件。
+FIRST_PLAN_ROUND = 71
+PLAN_SECTIONS = ("目标", "关键决策", "实施提纲", "验收")
 ROUND_MAX_LINES = 15
 ADR_NAME_RE = re.compile(r"^(\d{4})-.+\.md$")
 ADR_MAX_LINES = 40
@@ -44,8 +33,6 @@ SOURCE_PREFIX = "> 来源："
 DONE_PREFIX = "> 完成标准："
 STATUS_PREFIX = "> 状态："
 
-# 冻结的历史快照：开发树索引，按 ADR 0001 保持原样，不再更新也不再要求新形态。
-LAYOUT_ALLOWLIST = {"DEVTREE.md"}
 # 设计目录下的资产（配图、Mermaid 源等）不参与文档形状检查。
 ASSET_DIR = "assets"
 
@@ -76,29 +63,31 @@ def _kind(path, root):
         parts = path.relative_to(root).parts
     except ValueError:
         parts = path.parts
-    if ASSET_DIR in parts:
+    if parts and parts[0] == "docs":
+        parts = parts[1:]
+    if not parts:
         return None
-    if "adr" in parts:
-        return "adr"
-    if "design" in parts:
-        return "design"
-    if ROUND_NAME_RE.match(path.name):
-        return "round"
+    match = ROUND_DIR_RE.match(parts[0])
+    if match:
+        if int(match[1]) >= FIRST_PLAN_ROUND:
+            return "plan" if parts[1:] == ("PLAN.md",) else "extra"
+        if len(parts) > 1:
+            return "legacy"
+        if ROUND_NAME_RE.fullmatch(path.name):
+            return "round"
+    if parts == ("DEVTREE.md",) or parts[:2] == ("design", ASSET_DIR):
+        return "legacy"
+    if parts[0] in ("adr", "design") and len(parts) > 1:
+        return parts[0]
     return None
-
-
-def _is_legacy(path, docs):
-    """存量轮次目录 `<N>-*/`：整棵子树豁免新规则。"""
-    try:
-        parts = path.relative_to(docs).parts
-    except ValueError:
-        return False
-    return len(parts) > 1 and ROUND_DIR_RE.match(parts[0]) is not None
 
 
 def check_file(path, root):
     """返回该文件的问题列表，空列表表示通过。"""
     rel = _display(path, root)
+    kind = _kind(path, root)
+    if kind in (None, "extra"):
+        return [f"{rel}: 不在文档闭集内；新轮次只允许 docs/<N>-<主题>/PLAN.md"]
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
     problems = []
@@ -106,9 +95,13 @@ def check_file(path, root):
     if not _has_line(lines, READER_PREFIX):
         problems.append(f"{rel}: 缺少「{READER_PREFIX}<谁> · <什么问题>」行")
 
-    kind = _kind(path, root)
-
-    if kind == "adr":
+    if kind == "plan":
+        if not _has_line(lines, SOURCE_PREFIX):
+            problems.append(f"{rel}: 缺少来源")
+        for section in PLAN_SECTIONS:
+            if f"## {section}" not in lines:
+                problems.append(f"{rel}: 缺少「## {section}」段")
+    elif kind == "adr":
         if not ADR_NAME_RE.match(path.name):
             problems.append(f"{rel}: ADR 文件名须为四位数字加短名，形如 0001-xxx.md")
         for name in ADR_SECTIONS:
@@ -143,39 +136,21 @@ def collect(root):
     if not docs.is_dir():
         return []
 
-    targets = []
-    for path in sorted(docs.rglob("*.md")):
-        if path.name in LAYOUT_ALLOWLIST or _is_legacy(path, docs):
-            continue
-        if _kind(path, root) in ("adr", "design") or (
-            path.parent == docs and ROUND_NAME_RE.match(path.name)
-        ):
-            targets.append(path)
-    return targets
+    return [p for p in sorted(docs.rglob("*.md")) if _kind(p, root) != "legacy"]
 
 
 def check(root):
-    """返回全库问题列表；空列表表示通过。"""
+    """全库检查也能发现只有其他文件、尚未创建 PLAN.md 的新轮次。"""
     root = Path(root)
     docs = root / "docs"
     problems = []
-
     if not docs.is_dir():
         return problems
-
-    for path in sorted(docs.rglob("*.md")):
-        if path.name in LAYOUT_ALLOWLIST or _is_legacy(path, docs):
-            continue
-        if ASSET_DIR in path.relative_to(docs).parts:
-            continue
-        if _kind(path, root) in ("adr", "design"):
-            continue
-        if path.parent == docs and ROUND_NAME_RE.match(path.name):
-            continue
-        problems.append(
-            f"{_display(path, root)}: 不在文档闭集内；轮次记录放 docs/<N>-<中文描述>.md，"
-            "其他文档放 docs/adr/ 或 docs/design/"
-        )
+    for directory in sorted(docs.iterdir()):
+        match = ROUND_DIR_RE.match(directory.name)
+        if directory.is_dir() and match and int(match[1]) >= FIRST_PLAN_ROUND:
+            if not (directory / "PLAN.md").is_file():
+                problems.append(f"{_display(directory, root)}: 缺少 PLAN.md")
 
     adr_dir = docs / "adr"
     if adr_dir.is_dir():

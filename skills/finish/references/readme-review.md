@@ -14,11 +14,11 @@
 ## 判定数据源
 
 - 本轮起始 SHA 到 HEAD 的变更，加工作树 staged/unstaged 与未跟踪文件；执行阶段已自动提交的改动也必须计入。
-- **明示忽略**本轮刚写的轮次记录 / ADR 自身——它们不应触发 README review。
+- **明示忽略**本轮刚写的计划文档自身——它们不应触发 README review。
 
 ## 触发后子步
 
-1. 读 `README.md` + 本轮轮次记录（`docs/<N>-*.md`）、ADR 与关联 issue。
+1. 读 `README.md` + 本轮批准版 PLAN.md（旧轮次用原记录） 与关联 issue。
 2. 列出 README 中需新增 / 修改的具体段落（**只动相关段落，不重写整篇**）。
 3. 直接 Edit `README.md`。
 4. 一句话告知用户改了什么（例：「README 已更新：在 Skills 段新增 `/foo` 一节」）。
