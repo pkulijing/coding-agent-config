@@ -28,7 +28,7 @@ description: 按相关需求组批开发目标明确的 open issue：无需逐�
 
 **dry-run 例外**：只读取当前树与远端数据、报告当前分支及基线；不 fetch、不切分支、不 merge、不创建或清理 worktree，不要求清空正在审阅的改动。若审阅的是未合入规则，明确写出“按候选规则分诊”，不能冒充线上运行。
 
-列出**所有 open PR**，解析 body 中完整交付的关闭关键字关联（Closes / Fixes / Resolves）及部分交付的 `Refs #N`，得到在途 issue 集合；**部分交付也占用同一 issue**，不能只认 Closes，取所有 PR 改动文件的并集用于撞车检查；列表必须覆盖全部分页。**列不出就中止**，不把查询失败当成没有 PR。
+列出**所有 open PR**，解析 body 中完整交付的关闭关键字关联（Closes / Fixes / Resolves）及部分交付的 `Refs #N`，得到在途 issue 集合；**部分交付也占用同一 issue**，不能只认 Closes。同时保留完整的 PR 文件清单（含 `files` 与 `changedFiles` 字段，或经完整分页确认后封装为 `{"complete": true, "prs": [...]}`）供只读边界 helper 聚合撞车检查；列表与单 PR 文件均必须覆盖全部分页。**列不出或无法确认输入完整就中止**，不把查询失败或截断当成没有 PR / 没有冲突。
 
 ## Step 1 · 分诊与选择
 
@@ -69,7 +69,14 @@ description: 按相关需求组批开发目标明确的 open issue：无需逐�
 
 允许修改其他 skill，但不得借此改写自身权限或降低本次必须执行的 review/验证标准。涉及 `skills/review-loop/**` 时，先按**开发起始基线**的规则和编队完成本次检查，不用自己刚写的新规则审自己；改角度清单前先读该清单顶部说明。调整现有规则与降低当前审查约束须分清，不能以“文件在白名单”跳过这层判断。
 
-排除预期落点与任一 open PR 文件相交的任务。**共享登记文件也算落点**：新增 playbook 的触发表与 README、新增 skill 的 README 与本仓 AGENTS、新增模板的 MECHANICS 等都要计算；登记文件不在白名单内则同样拒收。判不准就当作可能相交，报告依据。
+排除预期落点与任一 open PR 文件相交的任务。**共享登记文件也算落点**：新增 playbook 的触发表与 README、新增 skill 的 README 与本仓 AGENTS、新增模板的 MECHANICS 等都要计算；登记文件不在白名单内则同样拒收。预期落点与在途 PR 撞车统一用只读 helper 复核：
+
+```bash
+python3 $HOME/.coding-agent/scripts/check_routine_boundaries.py \
+  --open-prs <open-prs.json> [--pr-limit <N>] --path <预期落点> [--path <预期落点> ...]
+```
+
+helper 返回非 0（命中红线、越出白名单、非法路径、撞在途 PR 或 PR 输入不完整/截断）即拒收该候选或中止；判不准就当作可能相交，报告依据。
 
 默认补现有合适文档；确有体系化新主题才新建 playbook，在 PR 中写清理由与新增触发指针。文档也能改变行为，不能把文件后缀当低风险证明。
 
@@ -136,7 +143,14 @@ git status --porcelain
 
 逐条重新读取所有保留成员的状态、作者元数据（本机 `--require-owner`，云端复核结构化作者字段）、讨论标签、正文及已使用的 owner 决策；与选择时不一致就重新分诊，关闭、标为讨论、作者校验失败或需求变动后不能继续按旧快照交付。按检查点契约收窄批次或整批放弃，并重跑保留成果验证。重新列所有 open PR，复核在途 issue 与文件占用，失败则停止。
 
-取 `git diff --name-only origin/<默认分支>...HEAD` 的**整批真实落点并集**，同时复核白名单、四条红线与在途文件相交；不能只检查撞车、不复核权限。违规或相交时按检查点契约剔除相关成果，无法隔离则放弃整批、尝试下一批；保留成果须重新验证与复核。无违规才 push 新分支、开 PR；不改别人的 PR，不 force-push。
+用只读 helper 对 `origin/<默认分支>...HEAD` 的**整批真实落点并集**执行最终复核（内部走 `git diff --name-status -z`，同时覆盖重命名旧/新路径、删除及特殊文件名），传入最新重新拉取的 open PR 列表同时复核白名单、四条红线与在途文件相交，不能只检查撞车、不复核权限：
+
+```bash
+python3 $HOME/.coding-agent/scripts/check_routine_boundaries.py \
+  --git-diff-base origin/<默认分支> --open-prs <latest-open-prs.json> [--pr-limit <N>]
+```
+
+helper 返回非 0（违规、相交、PR 输入不完整或 git diff 失败）一律阻断发布：违规或相交时按检查点契约剔除相关成果，无法隔离则放弃整批、尝试下一批；保留成果须重新验证与复核；输入不完整或底层检查失败直接停止。仅在 helper 返回 0 且无其他违规时才 push 新分支、开 PR；不改别人的 PR，不 force-push。
 
 ## Step 3 · PR 报告
 
