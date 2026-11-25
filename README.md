@@ -54,7 +54,7 @@ review 规格以技能、[Codex 角色配置](agents/codex-review.toml)与 [DSH 
 - 一次经验先在来源项目修实现、补测试或文档；只有能说明跨项目收益且现有工具/规则不足时，finish 才提出共享候选。跨仓 issue 仍经确认。
 - 普通规则可以删除、收窄或退役；事故历史已有 Git/issue 可追溯，不另建档案。保留偏好、安全边界与审查强度，不以字符数或删除比例验收。
 
-[scripts/context_budget.py](scripts/context_budget.py) 提供体量描述和部分引用检查；它不覆盖所有链接、章节与语义依赖，历史 token 估算也不是当前模型的实测成本。
+[scripts/context_budget.py](scripts/context_budget.py) 提供体量描述和部分引用检查；它不覆盖所有链接、章节与语义依赖，历史 token 估算也不是当前模型的实测成本。本仓统一检查入口为 `bash scripts/check.sh`（通过 `.python-version` 与 `pyproject.toml` 锁定的 uv 托管 Python 运行 `tests/`、shell 沙盘、helper 自测、`docs_lint.py` 与 `context_budget.py check-refs`），[PR CI](.github/workflows/ci.yml) 复用同一入口。
 
 ## 跨项目模板
 

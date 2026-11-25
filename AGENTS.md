@@ -17,12 +17,13 @@
 | `user.config.example.env` | 配置示例；真实值在仓库外 `~/.coding-agent/config.env`，迁移保留原件、用户值优先 |
 | `uv.config.base.toml` | 仅在用户 uv 配置缺失时初始化 |
 | `scheduler/` | 自动同步，任务名 coding-agent-config，状态和日志在 `~/.coding-agent/` |
+| `tests/`、`scripts/check.sh` | 本仓维护测试套件与统一检查入口，由 `.python-version` + `pyproject.toml` 锁定 uv 托管 Python，PR CI 复用同一入口 |
 | `.worktrees/`、`docs/` | 隔离开发工作树、批准版计划及历史记录 |
 
 ## 开发约束
 
 - 遵循全局开发流程。项目 `.worktrees/` 提供全部工作树入口；Codex 托管工作树在此建立软链接，保留真实路径与应用生命周期。每次操作显式指定工作目录。
-- 安装只在主 checkout 运行，linked worktree 必须拒绝。安装测试先用 `CCG_INSTALL_LIB_ONLY=1` 隔离入口，在临时 HOME 中验证；现有迁移测试在 `docs/61-Codex全盘迁移/`。
+- 安装只在主 checkout 运行，linked worktree 必须拒绝。安装测试先用 `CCG_INSTALL_LIB_ONLY=1` 隔离入口，在临时 HOME 中验证；维护测试统一放在 `tests/`，运行 `bash scripts/check.sh`（或 `uv run --frozen pytest`）。
 - 新增/删除技能或修改原生配置基线后，从主 checkout 重跑安装；目录软链内普通内容修改不必重装。
 - hooks 的注册、用户信任、真实触发分别核验；配置变更后仍需 `/hooks` 审阅。hook 尽力修复不替代提交前 lint。
 - review 包含工作树全部改动与新文件。改审查规则时冻结起始版本及其依赖；不借本次修改降低检查标准。委派与降级按 `/review-loop`。
