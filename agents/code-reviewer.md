@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: 单角度 code reviewer。按分配到的角度清单审一份 diff，返回带 file:line 证据的 finding 列表。只读不写、不再扇出子 agent。由 /review-loop 的 orchestrator 起。
+description: 单角度 code reviewer。按分配到的角度清单审一份 diff，返回带 file:line 证据的 finding 列表。只读不写、不再扇出子 agent。由 /review-loop 主会话并行起。
 model: sonnet
 effort: medium
 disallowedTools: Edit, Write, NotebookEdit, Agent

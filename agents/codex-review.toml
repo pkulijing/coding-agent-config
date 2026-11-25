@@ -1,9 +1,6 @@
 # 由 review-loop 读取并传入子 agent 工具；不是 Codex 原生 agent 注册配置。
 # CC 原生编队仍使用同目录 Markdown frontmatter。
-[orchestrator]
-model = "gpt-6.1-sol"
-reasoning_effort = "medium"
-
+# 主会话直接并行起 reviewer 并负责汇总，不设独立 orchestrator 角色。
 [reviewer]
 model = "gpt-6.1-sol"
 reasoning_effort = "medium"

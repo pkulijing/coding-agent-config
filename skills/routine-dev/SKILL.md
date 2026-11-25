@@ -91,7 +91,7 @@ description: 按相关需求组批开发目标明确的 open issue：无需逐�
 
 在 Step 0 的独立 worktree 使用 `auto/dev-<YYYYMMDD>-<主题>`（名称冲突则唯一后缀），日期用 `date -u +%Y%m%d`。一个批次共用一条分支；整批放弃后从固定远端基线 SHA 新建独立 worktree 与分支，不在主 checkout 切分支，不复用放弃过的实现。
 
-1. **冻结本次检查依据并输出简短实施计划**：改文件前记录 `git rev-parse HEAD` 的起始 SHA，整批沿用这份检查基线；涉及 review/commit 规则时，用 `git show <起始SHA>:<路径>` 读取基线 skill、其 references、agents 配置和角色任务书，逐一将实际基线约束显式传给 `/commit` 与 orchestrator，不用工作树或全局软链里的待审新版本替代。随后记录：批次目标、issue 清单与组批理由、依赖顺序、拟改文件并集、实现选择、逐条验收项与整批验证、环境需求。无需等待人工确认；需求目标由 issue 提供，局部实现决策由本流程授权。不能把有人在环的 `/start` 计划确认机械搬进来。
+1. **冻结本次检查依据并输出简短实施计划**：改文件前记录 `git rev-parse HEAD` 的起始 SHA，整批沿用这份检查基线；涉及 review/commit 规则时，用 `git show <起始SHA>:<路径>` 读取基线 skill、其 references、agents 配置和角色任务书，逐一将实际基线约束显式传给 `/commit` 与 reviewer 委派，不用工作树或全局软链里的待审新版本替代。随后记录：批次目标、issue 清单与组批理由、依赖顺序、拟改文件并集、实现选择、逐条验收项与整批验证、环境需求。无需等待人工确认；需求目标由 issue 提供，局部实现决策由本流程授权。不能把有人在环的 `/start` 计划确认机械搬进来。
 2. 命中语言/栈触发条件先读相应 playbook。有明确输入输出契约先写会失败的测试再实现；复杂任务仍自主完成必要验证。
 3. 受影响测试必跑。已知入口：`bash scripts/check.sh`（通过 `uv run --frozen pytest` 覆盖 `tests/`、shell 沙盘与 `platform_issue.py --self-test`，并运行 `docs_lint.py` 与 `context_budget.py check-refs`）；其余按实际代码查找，缺测试的逻辑按 TDD 补最小测试。测试继承网络、时钟、HOME 等环境的处理遵循宪法，不以宿主恰好能跑代替各分支验证。
 4. **实际检查环境依赖**：需要真实会话数据或特定实验时，须取得对应数据和可控环境才可声明完成。本机目录存在不证明云端有数据。缺条件报告检查动作、缺项和影响，不能凭猜测跳过，也不能用估算充当实测。

@@ -1,6 +1,6 @@
 ---
 name: review-loop
-description: 提交前的自动 review 迭代环——委派独立 context 的子 agent 编队 review、修、跑验证、复审，迭代到「运行验证通过 + 无高置信 correctness 问题」才放行；2 轮不收敛留痕放行，全程无人在环。由 /commit 自动调用，也可手动跑
+description: 提交前的自动 review 迭代环——主会话并行委派独立 context 的 reviewer 子 agent、汇总修问题、跑验证并复审，迭代到「运行验证通过 + 无高置信 correctness 问题」才放行；2 轮不收敛留痕放行，全程无人在环。由 /commit 自动调用，也可手动跑
 ---
 
 对**当前工作树的改动**跑一轮自动 review 迭代，直到 clean 才放行提交。本 skill 是 review 机制的**单一真源** —— 宪法与 `/commit` 只留触发点与一句判据，细节都在这里。
@@ -33,7 +33,7 @@ review 的对象是**整个工作树的全部改动** —— `/commit` 调本 sk
 
 **这些绝不自动跳过**（哪怕是纯文字）：
 
-- **指令 / 规则文件** —— `skills/*.md`、`GLOBAL_AGENTS.md`、`playbooks/*.md`、`agents/*.md`、`agents/*.toml`、`AGENTS.md` 与各端的 agent 配置。它们**就是开发流程与安全边界本身**，跳过 review 等于让门禁在修改自身时失效。`agents/*.md` 尤其如此：改一个 `model` 或 `effort` 就改了整道门禁的强度。
+- **指令 / 规则文件** —— `skills/*.md`、`skills/*/references/*.md`、`GLOBAL_AGENTS.md`、`playbooks/*.md`、`agents/*.md`、`agents/*.toml`、`AGENTS.md` 与各端的 agent 配置。它们**就是开发流程与安全边界本身**，跳过 review 等于让门禁在修改自身时失效。`agents/*.md` 尤其如此：改一个 `model` 或 `effort` 就改了整道门禁的强度。
 - **配置变更** —— CI 权限、部署目标、认证 / CORS、依赖版本、构建 / 运行时开关，一行就可能改变安全态或线上行为。
 
 **有疑则不跳。**
@@ -42,124 +42,77 @@ review 的对象是**整个工作树的全部改动** —— `/commit` 调本 sk
 
 ### 编队约束
 
-模型与思考档：CC 取 `agents/*.md` frontmatter，Codex 取 `agents/codex-review.toml`，DSH 取 `agents/dsh-review.toml`（路由与档位由 DSH 入口解析：路由即母对话路由，思考档目标是该文件里的值，目标档该路由不支持时取最高可用档并写明），Antigravity 取 `agents/antigravity-review.toml`（仅含 `model` 档位，无独立思考档参数）；不得临时更换或临时减配。数量与角度按下表，只有两档，不自行加码或减配。审查在独立子 agent 中进行，能力失败才走 Step 5。范围限本次 diff、调用点、被调方与紧邻上下文，不全库扫描。
+所有平台均采用**主会话直启并行 reviewer + 主会话汇总**的扁平编队，不设独立 orchestrator 子 agent：每个角度的审查仍在独立子 agent context 中完成，主会话负责并行委派、跨 reviewer 去重、置信打分与只读探针验证。
 
-| 档 | 编队（`subagent_type` × 数量 → 角度） | 触发 |
+模型与思考档真源：CC 取 `agents/*.md` frontmatter，Codex 取 `agents/codex-review.toml`，DSH 取 `agents/dsh-review.toml`，Antigravity 取 `agents/antigravity-review.toml`；不得临时更换或临时减配。数量与角度按下表，只有两档，不自行加码或减配。能力失败才走 Step 5。范围限本次 diff、调用点、被调方与紧邻上下文，不全库扫描。
+
+| 档 | 编队（角色 × 数量 → 角度） | 触发 |
 | --- | --- | --- |
-| **默认** | `review-orchestrator` ×1；`code-reviewer` ×3 → 角度 ①②③ | 一切需要 review 的改动 |
-| **重** | `review-orchestrator` ×1；`code-reviewer` ×4 → 角度 ①②③④；`code-reviewer-deep` ×1 → 角度 ⑤ | 命中下列任一复杂特征 |
+| **默认** | `code-reviewer` ×3 → 角度 ①②③ | 一切需要 review 的改动 |
+| **重** | `code-reviewer` ×4 → 角度 ①②③④；`code-reviewer-deep` ×1 → 角度 ⑤ | 命中下列任一复杂特征 |
 
 **升重档条件**：并发/多线程/异步生命周期；跨进程/网络/容错；状态机/竞态；难以用测试复现；横跨 3+ 模块的编排装配。拿不准偏向重档。两档角色均按各端配置的思考档（CC / Codex 为 `medium`；DSH 见 `agents/dsh-review.toml`；Antigravity 无独立思考档参数，跟随平台默认）；没有更轻档，琐碎变更在 Step 2 处理。
 
-## Step 4 · 委派独立 review orchestrator
+## Step 4 · 并行委派独立 reviewer 与主会话汇总
 
 ### 资源预检（各端均执行）
 
-按全局「技能依赖的资源检查」先读到本次档位需要的资源：`~/.coding-agent/skills/review-loop/references/angles.md`、`~/.coding-agent/agents/review-orchestrator.md` 与 `code-reviewer.md`；重档另含 `code-reviewer-deep.md`，Codex 另含 `~/.coding-agent/agents/codex-review.toml`，DSH 另含 `~/.coding-agent/agents/dsh-review.toml`，Antigravity 另含 `~/.coding-agent/agents/antigravity-review.toml`。CC 还检查本次需要的命名定义在 `$HOME/.claude/agents/` 下可读。缺失、断链或不可读须显式列出实际路径、错误与影响，并按全局约定给出主 checkout 安装修复命令；不自动执行安装。
+按全局「技能依赖的资源检查」先读到本次档位与当前平台需要的资源：`~/.coding-agent/skills/review-loop/references/angles.md`、`~/.coding-agent/agents/code-reviewer.md`（重档另含 `code-reviewer-deep.md`）、下表命中的平台委派说明，以及当前端的配置文件（Codex 读 `agents/codex-review.toml`，DSH 读 `agents/dsh-review.toml`，Antigravity 读 `agents/antigravity-review.toml`，CC 检查 `$HOME/.claude/agents/` 命名定义）。缺失、断链或不可读须显式列出实际路径、错误与影响，并按全局约定给出主 checkout 安装修复命令；不自动执行安装。
 
-**配置、角色任务书或角度清单缺失时，停止依赖它的委派，不猜模型 / 思考档、不凭记忆重建清单。** CC 注册入口缺失但共享定义与清单完整时，先报告部署缺口，再按 Step 5 实际核验命名类型；调用失败才进入既定降级链。文件都在但类型仍未注册时也走同一核验，不能把文件存在当作调用已成功。若缺失资源使既定降级也无法保住清单或配置，报告 review 阻塞，不能宣称 clean 或跳过 review 提交。
+**配置、角色任务书、平台说明或角度清单缺失时，停止依赖它的委派，不猜模型 / 思考档、不凭记忆重建清单。** 若缺失资源使既定降级也无法保住清单或配置，报告 review 阻塞，不能宣称 clean 或跳过 review 提交。
 
-### Codex 委派入口
+### 平台委派路由（按当前实际可用工具只加载本端说明）
 
-实际工具有 `collaboration.spawn_agent` 时，走本入口，不调用 CC 的 `subagent_type`：
+| 运行时工具信号 | 委派说明 | 配置文件真源 |
+| --- | --- | --- |
+| `collaboration.spawn_agent` | `references/codex.md` | `~/.coding-agent/agents/codex-review.toml` |
+| CC 命名 `Agent`（`subagent_type`） | `references/cc.md` | `~/.coding-agent/agents/code-reviewer*.md` |
+| `subagent`（非 `subagent_fork`） | `references/dsh.md` | `~/.coding-agent/agents/dsh-review.toml` |
+| `define_subagent` + `invoke_subagent` | `references/antigravity.md` | `~/.coding-agent/agents/antigravity-review.toml` |
 
-1. 读取 `~/.coding-agent/agents/codex-review.toml`。三个角色的模型与思考档以此文件为单一真源，不照抄 CC 的 sonnet/opus。
-2. 起 1 个 orchestrator：`fork_turns="none"`，`model` 与 `reasoning_effort` 取 `[orchestrator]`。新 context 只接收本次任务书，避免继承开发过程的先入之见。
-3. orchestrator 按档位表创建 reviewer：①②③（重档另加④⑤），参数同样 `fork_turns="none"`，普通取 `[reviewer]`，⑤取 `[deep_reviewer]`。每个任务书包含下方所有共用约束、对应的 `agents/code-reviewer.md` 或 deep 文件正文（不把其 CC frontmatter 当模型配置），以及角度清单原文。
-4. 并发槽位不够时分批创建，等待前一批完成再起下一批；总数和角度覆盖不变。槽位限制本身不能成为少审角度的理由。
-5. Codex 通用子 agent 未必具备 CC `disallowedTools` 的结构性限制，必须在任务书写明“只读不写、不提交、reviewer 不再派生子 agent”，并在结果中如实说明只读由指令约束；不得宣称工具已强制只读。这属于已声明的平台实现，不是丢失独立 context 的自审降级。
-6. 真正调用失败才按 Step 5 逐档降级；模型名不可用也算明确失败，不能悄悄换模型或继承主会话档位。实际工具没有模型/思考档参数时，保住独立 context 并逐项声明未固定的属性。
+不能仅根据平台名称判断工具不可用；以当前工具列表与实际调用为准。
 
-### DSH 委派入口
+### 各端共用的委派与汇总契约
 
-工具是 `subagent`：新会话只接收本次任务书，等价于 Codex 的 `fork_turns="none"`。**不要用 `subagent_fork`** —— 它继承父会话历史，等于把开发过程的先入之见带进审查。
-
-DSH 的委托深度上限是 1（子 agent 再调 `subagent` 会被拒），所以**没有 orchestrator 子 agent**：主会话先读 `~/.coding-agent/agents/dsh-review.toml`，再按档位表**直接并行起 N 个 reviewer**，每个 reviewer 一个角度；主会话自己按下方 orchestrator 任务书的六条执行，只是不再作为子 agent 运行。
-
-1. **路由与档位要先解析再传**：用 `list_subagent_models` 依次取授权 provider、该 provider 的 model、该 model 的思考档，然后显式传 `provider` / `model` / `reasoning_effort` 三者（DSH 拒绝只传 effort）。没有 model-selection 白名单时授权集只有母对话路由一条，传它就是跟随主会话。思考档取 `agents/dsh-review.toml` 的目标档（`[reviewer]`；⑤ 取 `[deep_reviewer]`），该路由不支持就取它最高可用档。实际路由与档位写进结果顶部；目标档没拿到要写明，不许写成「已钉死」。没有 `list_subagent_models` 工具时三个字段全不传，按平台规则回落母对话路由，并注明「档位未固定」。
-2. `cwd` 传第 4 步取的绝对仓库根；任务书必须自带三样：下方「各端共用」的共用约束、对应的 `agents/code-reviewer.md`（⑤ 用 `code-reviewer-deep.md`）正文、角度清单原文。DSH 没有命名 agent 类型可继承角色定义，这两份正文是唯一的载体（不把 CC frontmatter 当模型配置）。另写明「只读不写、不提交、不再派生子 agent」。
-3. **并行起**（同一轮发出全部调用），等全部返回再汇总；某个 reviewer 没交出 finding 列表时，按角度清单原文自己补审该角度，不能当 clean 计入。
-4. DSH 对子 agent 没有结构性只读限制，只读由任务书约束 —— 结果须如实说明，不得宣称工具已强制只读。
-5. 汇总（去重、置信打分、探针验证）在主会话完成：独立 context 的损失仅限这一层，**每个角度的审查仍在独立 context 中**。结果须注明「汇总在主会话」，但不据此进入 Step 5 降级链 —— 角度与 rubric 都没有减配；档位按该路由支持的档执行（未能固定也写明），不得宣称「无减配」。
-6. 路由被 Session 策略拒绝（`child LLM route "..." is not allowed for this Session`）**不算编队能力缺失**：按第 1 条改用母对话路由重试一次。仍调不起来（provider 未注册、适配器报错）才算明确失败，按 Step 5 处理；换路由或降档都要写进结果顶部。
-
-### Antigravity 委派入口
-
-实际工具有 `define_subagent` 与 `invoke_subagent` 时，走本入口：
-
-1. 读取 `~/.coding-agent/agents/antigravity-review.toml`。`invoke_subagent` 只支持 `Model` 档位（`inherit` / `flash_lite` / `flash` / `pro`），无独立 `reasoning_effort` 参数；结果顶部须如实注明「思考档未固定（平台无独立 effort 参数）」。
-2. **主会话先预采集 git 快照**：Antigravity 的 `EnableWriteTools: false` 会同时移除写文件与命令行（shell）工具，子 agent 仅有只读文件检索能力，无法自己跑 `git -C`。因此主会话在委派前先执行 `git rev-parse --show-toplevel`、`git status --short` 与 `git diff`（将完整 diff 写入对话 scratch 文件或内联），列出全部修改/未跟踪文件的绝对路径；**重档（角度 ④）**另预采集改动文件的近期 `git log` 快照。
-3. 用 `define_subagent` 注册本次需要的只读角色（`SystemPrompt` 传对应 `agents/*.md` 正文，不把 CC frontmatter 当模型配置，并附加一条 Antigravity 运行时补充：在 `EnableWriteTools: false` 无 shell 环境下，用主会话预采集的仓库根与 git status/diff 快照替代 `git -C` 自证与取 diff，以绝对路径 `read_file` 核对仓库文件，不因无 shell 中止）：
-   - `review-orchestrator`：`EnableWriteTools: false`、`EnableSubagentTools: true`、`EnableMCPTools: false`
-   - `code-reviewer`：`EnableWriteTools: false`、`EnableSubagentTools: false`、`EnableMCPTools: false`
-   - 重档另注册 `code-reviewer-deep`：`EnableWriteTools: false`、`EnableSubagentTools: false`、`EnableMCPTools: false`
-   这提供了**结构性只读**与 reviewer 禁止再扇出。
-4. 用 `invoke_subagent` 起 1 个 `review-orchestrator`（`Model` 取 `[orchestrator]`，`Workspace: "inherit"`），委派 prompt 带上仓库根、改动/新增文件绝对路径清单与 git 快照路径。新子 agent 不继承父对话历史，等价于 `fork_turns="none"`；启动后结束当前 turn 等系统唤醒通知，不轮询。
-5. orchestrator 在其任务内用 `invoke_subagent` 并行起各角度 reviewer（`code-reviewer` 取 `[reviewer]`，重档 ⑤ 用 `code-reviewer-deep` 取 `[deep_reviewer]`），逐字转发 `references/angles.md` 对应角度、仓库根与 git 快照路径，等全部回传后汇总返回。
-6. 若 `define_subagent` 或 `review-orchestrator` 嵌套委派失败，按 Step 5 降级到 ②：主会话直接并行调用内置只读 `research` 子 agent 各审一个角度（同样传入预采集的仓库根与 git 快照，`Model` 按 `agents/antigravity-review.toml` 传入），保住独立 context 与结构性只读，并在结果顶部注明「汇总在主会话」。
-
-### CC 委派入口
-
-起 **1 个 orchestrator 子 agent**（`subagent_type: review-orchestrator`），同步等它返回一份 finding 列表。**按你环境里 Agent 工具的实际 schema 填参** —— 该 schema 随 CC 版本漂移，别照抄记忆里的字段清单。
-
-**走本档编队时不要传 `model` 入参。** 模型解析顺序是「环境变量 > 单次调用的 `model` 参数 > agent 定义的 frontmatter」—— 传了就会盖掉定义里钉死的那个（`code-reviewer-deep` 会被从 `opus` 打回去）。思考档没有单次调用入参，只认 frontmatter，所以**编队档位的唯一真源是 `agents/*.md`**。**唯一例外是 Step 5 的第 ② 档** —— 那里用的通用类型没有 frontmatter 可继承，`model` 反而必须传。
-
-> CC 使用命名 agent 类型；Codex 使用上方原生子 agent 入口。不能仅根据平台名称判断工具不可用。
-
-### 各端共用的任务书
-
-**先钉死工作目录**（这条排在任务书之前，因为它决定了后面六条审的是不是同一棵树）：主会话自己跑 `git rev-parse --show-toplevel` 取**绝对路径**，写进委派 prompt，并要求整个编队**一切操作都锚定这个根**（`git -C <根>` + 绝对路径读文件）、把它**原样**逐层转给每个 reviewer。
-
-工作目录必须显式逐层传递，不能假定子 agent 的 cwd 就是目标 worktree。
-
-**orchestrator 任务书**（六条缺一不可）：
-
-1. **对象与范围**：用 `git -C <根> status` / `git -C <根> diff` 拿全部改动；只审 diff 及其接壤代码，禁止全库扫描。
-2. **编队**：按档位表并行起 reviewer 子 agent，**每份委派 prompt 都带上那个仓库根**；各自独立审、互不通信，各返回 finding 列表（`file:line` + 严重度 + 理由 + 证据）。**起不了子 agent 时**自己按同一角度清单逐角度顺序审，并在结果顶部注明「reviewer 未并行」——**不许因此少审一个角度**。
-   必须等待所有角度的 finding 后返回，不能把进度当结果。某 reviewer 显式报错/异常退出、已无存活 agent 却缺结果，或追问一次仍无 finding，就由 orchestrator 按原清单补审该角度并注明；不继续等待，也不把缺失结果计为 clean。
-
-3. **角度分工**：清单在本 skill 目录下的 `references/angles.md`（CC 端绝对路径 `$HOME/.coding-agent/skills/review-loop/references/angles.md`）。**orchestrator 自己去读那个文件**，把对应角度那一节**逐字原文**转给该 reviewer —— 不改写、不压缩、不合并。清单是「低思考档也不漏审」的机制本身，压缩它等于抵消降档的前提。
-4. **汇总**：跨 reviewer 去重；逐条按 0–100 置信打分 —— 0 = 伪报 / pre-existing；25 = 可能真但未验证；50 = 真但属 nit / 低频；75 = 双查过、很可能实际触发、直接影响功能；100 = 确证且高频。**< 80 直接丢弃**。75 分上下的存疑项，能用可执行探针（边界值、调用点核对、最小复现）验证的先验证再定分。
-   **转给每个 reviewer 一条硬要求**：给反例时**必须报全所有相关量**（不许只报支持自己结论的那一个分量），并**在一个已知正确的对照样本上验证自己的前提**；做不到这两条就把该条降级为「存疑」而非反例。**你自己打分时同样按这条核**：一条主张推翻既有结论的 finding，若引用的量不完整，不管它带多少实测数字都不给 ≥80。
-5. **返回**：单一结构化 finding 列表（`file:line`、置信分、证据、来源角度）；无 finding 则明确说 clean。**不修改任何文件。**
-6. **已定设计前提**：把清单转传各 reviewer；对这些前提的质疑不算 finding。
-
-**必须拿到 finding 才往下走**：环境提供同步开关就选同步；默认后台异步的环境等完成通知再继续，不要在结果返回前推进 loop。
-
-主会话追问一次仍只收到进度汇报时，按 Step 5 核验并降到②，不能持续轮询冒充 review。
-
-**「已定设计前提」清单怎么来**：子 agent 没有本轮对话的上下文，不告诉它哪些是人类已拍板的决策，它就会去质疑，产出一堆假 finding。**首轮委派前**先收集：本轮对话里人类明确拍板过的决策，加上本轮批准的 PLAN.md（旧轮次用原记录及相关 ADR） 与对话里已拍板的取舍；清单为空就省略那一段。**迭代中追加**：reviewer 又质疑了某个已定决策，先核对它确属已拍板的（拿不准问用户），确认后追加进下轮 prompt。**不要自己替用户否决 reviewer 的意见。**
+1. **先钉死工作目录**：主会话先跑 `git rev-parse --show-toplevel` 取**绝对路径**，原样写进每份 reviewer 委派 prompt，要求一切 git 命令带 `-C <根>`、读文件用绝对路径，不假定子 agent 继承 cwd（Antigravity 无 shell 环境的快照传递见 `references/antigravity.md`）。
+2. **角度清单原文转发**：主会话读 `references/angles.md`，把对应角度那一节**逐字原文**转给该 reviewer —— 不改写、不压缩、不合并。清单是「低思考档也不漏审」的机制本身，压缩它等于抵消降档的前提。reviewer 之间互不通信，各自独立审、各自返回。
+3. **反例完整性硬要求**：转给每个 reviewer —— 给反例时**必须报全所有相关量**（不许只报支持自己结论的那一个分量），并**在一个已知正确的对照样本上验证自己的前提**；做不到这两条就把该条降级为「存疑」而非反例。主会话打分时同样按这条核：一条主张推翻既有结论的 finding，若引用的量不完整，不管它带多少实测数字都不给 ≥80。
+4. **已定设计前提**：子 agent 没有本轮对话的上下文。**首轮委派前**主会话收集：本轮对话里人类明确拍板过的决策，加上本轮批准的 `PLAN.md`（旧轮次用原记录及相关 ADR）中的取舍，转传各 reviewer；清单为空就省略。**迭代中追加**：reviewer 质疑已定决策时先核对（拿不准问用户），确认后追加进下轮 prompt。**不要自己替用户否决 reviewer 的意见。**
+5. **等待全部返回与缺席补审**：环境提供同步开关就选同步；默认后台异步的环境等全部完成通知再汇总，不要在结果返回前推进 loop。某个 reviewer 显式报错 / 异常退出、已无存活 agent 却缺结果、或追问一次仍只收到进度 / 无 finding 列表（含回报「工作目录不符，未审」）时，**不能当 clean 计入** —— 须严格按 Step 5 逐档核验降级：先对缺席角度走 ②（通用独立 reviewer）补审；仅当 ② 经实际核验也失败时，才允许主会话按 ③（结构化自审）补审该角度并附 ①② 各自失败证据与 ③ 档标注。
+6. **主会话汇总（只读）**：
+   - 跨 reviewer 去重，合并同源问题并保留最强证据。
+   - 逐条按 0–100 置信打分：0 = 伪报 / pre-existing；25 = 可能真但未验证；50 = 真但属 nit / 低频；75 = 双查过、很可能实际触发、直接影响功能；100 = 确证且高频。**< 80 直接丢弃**。
+   - 75 分上下的存疑项，能用**只读探针**（边界值、调用点核对、最小复现命令，不改工作树）验证的先验证再定分。
+   - 汇总留在主会话是所有平台的正常编队形态，结果中注明「汇总在主会话」即可，不据此进入 Step 5 降级链。
 
 ## Step 5 · 降级链
 
-优先级：**① orchestrator 编队 > ② 主会话当 orchestrator + 通用 agent 编队 > ③ 主会话结构化自审 > 不 review（禁止）**。
+优先级：**① 平台首选独立 reviewer 编队 > ② 通用子 agent 独立 reviewer 编队 > ③ 主会话结构化自审 > 不 review（禁止）**。
 
 | 档 | 编队形态 | 相对 ① 丢了什么 | 何时用 |
 | --- | --- | --- | --- |
-| ① | Step 4 对应平台的 orchestrator + reviewer | —— | 默认 |
-| ② | **主会话自己当 orchestrator**：按档位表并行起 N 个**当前可用的通用 agent 类型**（`general-purpose` 等）各审一个角度，主会话只做跨 reviewer 去重、置信打分、探针验证 | 保住独立 context 和角度覆盖；CC 通用类型可能丢 effort 固定与结构性只读；Codex 参数可固定 model/effort，只读通常由任务书约束，按实际能力报告 | 首选编队无法运行，但仍可独立委派通用 reviewer |
+| ① | Step 4 对应平台委派说明的并行 reviewer 编队 | —— | 默认 |
+| ② | 主会话按档位表并行起 N 个**当前可用的通用子 agent 类型**（`general-purpose` / `research` 等）各审一个角度 | 保住独立 context 和角度覆盖；可能丢 effort 固定或结构性只读，按各端实际能力逐项报告 | 首选编队无法运行，但仍可独立委派通用 reviewer |
 | ③ | 无编队，主会话逐角度自审 | **独立 context** —— 本机制的首要属性 | 当前环境的所有子 agent 工具确实不可用 |
 
-**② 的委派 prompt 必须自带这两条**（①档由 agent 定义兜住，通用类型没有）：
+**② 的委派 prompt 必须自带这两条**（① 档由平台定义或配置兜住，通用类型没有）：
 
-- **传 `model` 入参**：CC 值照抄 `agents/code-reviewer.md` 的 frontmatter；Codex 按 `agents/codex-review.toml` 同时传 `model` 和 `reasoning_effort`，`fork_turns="none"`；DSH 按 Step 4 DSH 入口第 1 条解析出 `provider`、`model` 和 `reasoning_effort` 后传入；Antigravity 调用内置只读 `research` 子 agent 并按 `agents/antigravity-review.toml` 传 `Model`。这是 Step 4「不要传 `model`」的唯一例外。
-- **写死「只读不写：不修改任何文件」** —— 通用类型没有 `disallowedTools` 兜底，漏了这句 reviewer 真的能改工作树，而 review 阶段改动是静默的。
+- **显式传模型 / 档位参数**：各端传法见对应 `references/<platform>.md`（CC 通用类型传 `model`、Codex 传 `model` + `reasoning_effort` + `fork_turns="none"`、DSH 解析传 `provider` / `model` / `reasoning_effort`、Antigravity 用内置只读 `research` 传 `Model`）。
+- **写死「只读不写：不修改任何文件、不提交、不再派生子 agent」** —— 通用类型未必有结构性只读兜底，漏了这句 reviewer 可能静默改工作树。
 
-**② 优先保住独立 context**。模型、思考档、结构性只读是否保住，按实际工具参数与限制逐项报告，不按交互/无人值守环境猜测。③ 丢失独立 context，必须显著说明。
-
-CC 命名 agent 实际返回未注册时，可按下述门槛尝试通用类型；不以平台名、文件是否存在或旧版本经验预判能力。
+**② 优先保住独立 context**。模型、思考档、结构性只读是否保住，按实际工具参数与限制逐项报告，不按交互 / 无人值守环境猜测。③ 丢失独立 context，必须显著说明。
 
 **降级门槛（三条硬规则，任一不满足就不许降）**：
 
-1. **先真核验一次。** 要么**实际发起过一次 Agent 调用并失败**，要么**核对确认 Agent 工具不在当前工具列表里**（受限环境下无从发起，核对工具列表就是那次实际核验）—— 两者都是可复述的实际观察。纯推断（「我判断它起不来 / 不该调」）不构成理由。
-2. **只有能力缺失才算失败。** 穷举：Agent 工具不在当前工具列表里、调用直接报错、子 agent 起不来、返回的不是 finding 列表。**策略类指令一律不算** —— 「除非用户要求否则别调 Agent / 别用 workflow」这类平台通用系统提示，在用户走 `/commit` / `/review-loop` 时**条件已被满足**（宪法要求 commit 前委派独立 context reviewer，这就是那个 user request），它是策略约束、不是能力缺失。**子 agent 路由被 Session 策略拒绝也不算**（见 DSH 委派入口第 6 条），先进路由解析重试。真拿不准 → **停机问人**，不许自己挑降级路径：在代价不同、计划未预先授权的方案间替人类选择是方向性决策。
-3. **一次只降一档，门槛逐档适用。** 核验到 ① 失败只授权你走 ②；要再落到 ③，必须**对 ② 另做一次核验**（通用 agent 类型也起不来）。**「① 起不来」永远不构成走 ③ 的理由**。
+1. **先真核验一次。** 要么**实际发起过一次子 agent 调用并失败**，要么**核对确认子 agent 工具不在当前工具列表里**（受限环境下无从发起，核对工具列表就是那次实际核验）—— 两者都是可复述的实际观察。纯推断（「我判断它起不来 / 不该调」）不构成理由。
+2. **只有能力缺失才算失败。** 穷举：子 agent 工具不在当前工具列表里、调用直接报错、子 agent 起不来、返回的不是 finding 列表。**策略类指令一律不算** —— 「除非用户要求否则别调 Agent / 别用 workflow」这类平台通用系统提示，在用户走 `/commit` / `/review-loop` 时**条件已被满足**（宪法要求 commit 前委派独立 context reviewer，这就是那个 user request），它是策略约束、不是能力缺失。**DSH 子 agent 路由被 Session 策略拒绝也不算**（见 `references/dsh.md`），先进路由解析重试。真拿不准 → **停机问人**，不许自己挑降级路径：在代价不同、计划未预先授权的方案间替人类选择是方向性决策。
+3. **一次只降一档，门槛逐档适用。** 核验到 ① 失败只授权你走 ②；要再落到 ③，必须**对 ② 另做一次核验**（通用子 agent 也起不来）。**「① 起不来」永远不构成走 ③ 的理由**。
 
 **无人值守例外**：云端 routine 等无人在环的会话**没有「停机问人」这个选项** —— 判不准时按降级处理，并在留痕里写明「门槛判定存疑」及实际观察到的表现。挂起等于整次运行报废，比一次留痕充分的降级更糟。
 
 降级后**角度覆盖不打折**：② 由主会话读 `references/angles.md`、把对应小节**逐字原文**转给每个 reviewer；③ 由主会话自己逐角度过一遍 diff。两者都用同一套置信 rubric 过滤，并在结果**顶部显著标注** —— **两档的标注不通用，别混用**：
 
-> **②** ⚠ 本次编队降级为**通用 agent 类型** —— 独立 context 未失，`model` 已按当前端的编队配置解析（DSH 为路由跟随主会话）、只读已由委派 prompt 约束；能力损失逐项按实报告：CC 通用类型可能未固定 effort；Codex 支持参数且已传入时不能声称 effort 丢失；DSH 已显式传参时同样不能声称丢失，但目标档未拿到要按 DSH 入口第 1 条写明；各端通用 reviewer 的只读均可能仅由任务书约束。
+> **②** ⚠ 本次编队降级为**通用 agent 类型** —— 独立 context 未失，`model` 已按当前端的编队配置解析（DSH 为路由跟随主会话）、只读已由委派 prompt 约束；能力损失逐项按实报告：CC 通用类型可能未固定 effort；Codex 支持参数且已传入时不能声称 effort 丢失；DSH 已显式传参时同样不能声称丢失，但目标档未拿到要按 `references/dsh.md` 写明；各端通用 reviewer 的只读均可能仅由任务书约束。
 > 降级原因：<那次调用失败的实际表现：报错原文>
 
 > **③** ⚠ 本次为**主会话结构化自审**（未经独立 context 把关）—— 开发对话的先入之见在场，难复现问题极易漏判。另需告知用户「主 context 会因此增大」。
@@ -175,7 +128,7 @@ CC 命名 agent 实际返回未注册时，可按下述门槛尝试通用类型�
 
 ### 6.1 分诊 finding
 
-orchestrator 已过滤过一层，主会话仍复核证据，按**置信 + 是否真会出错**走三条出口，**不看 P 级数字**。
+主会话完成 Step 4 的去重与置信过滤后，对保留项按**置信 + 是否真会出错**走三条出口，**不看 P 级数字**。
 
 **不变量：6.1 里任何改动工作树的动作——复核时顺手修、推翻类的局部修、按建议让用户手改——都视同 6.2 的修复，受 6.4 轮次守卫约束。**
 

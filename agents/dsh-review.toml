@@ -1,7 +1,5 @@
 # 由 review-loop 读取并传入 DSH 的 subagent 工具；不是 DSH 原生 agent 注册配置。
-# 与 agents/codex-review.toml 同构，差异只来自平台能力：
-#   - DSH 委托深度上限为 1（子 agent 再调 subagent 会被拒），不存在 orchestrator 子 agent，
-#     汇总留在主会话，因此不设 [orchestrator] 角色。
+# 与 agents/codex-review.toml 同构，主会话直接并行起 reviewer 并负责汇总（DSH 委托深度上限也为 1）：
 #   - 路由跟随主会话，这里只钉思考档：DSH 没有 model-selection 策略时，显式选路只允许
 #     「母对话当前路由」，钉死厂商路由一换部署就被拒。provider / model 不在此钉：不传即跟随主会话，
 #     要钉档位时由 /review-loop 的 DSH 入口查出该路由再显式传。

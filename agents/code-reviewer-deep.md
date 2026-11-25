@@ -1,6 +1,6 @@
 ---
 name: code-reviewer-deep
-description: 并发 / 状态机 / 资源生命周期专项深审 reviewer，跑 opus，仅重档使用。只读不写、不再扇出子 agent。由 /review-loop 的 orchestrator 起。
+description: 并发 / 状态机 / 资源生命周期专项深审 reviewer，跑 opus，仅重档使用。只读不写、不再扇出子 agent。由 /review-loop 主会话并行起。
 model: opus
 effort: medium
 disallowedTools: Edit, Write, NotebookEdit, Agent
