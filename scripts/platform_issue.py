@@ -127,6 +127,77 @@ def latest_owner_comment(comments):
     return None
 
 
+AUTHOR_OWNER = "owner"
+AUTHOR_NON_OWNER = "non_owner"
+AUTHOR_UNKNOWN = "unknown"
+
+
+def classify_issue_author(raw, repo_owner, platform=PLATFORM_GITHUB):
+    """Classify an issue's author trust against the authoritative repo owner.
+
+    Fail-closed by design: missing/malformed metadata, empty repo_owner, or
+    unverified platforms (GitLab) always return `unknown`, never `owner`.
+    Bot accounts (`is_bot: true`) are classified as `non_owner`.
+    """
+    if platform != PLATFORM_GITHUB:
+        return AUTHOR_UNKNOWN
+    if not isinstance(repo_owner, str) or not repo_owner.strip():
+        return AUTHOR_UNKNOWN
+    if not isinstance(raw, dict):
+        return AUTHOR_UNKNOWN
+    author = raw.get("author")
+    if not isinstance(author, dict):
+        return AUTHOR_UNKNOWN
+    login = author.get("login")
+    if not isinstance(login, str) or not login.strip():
+        return AUTHOR_UNKNOWN
+    if author.get("is_bot") is True:
+        return AUTHOR_NON_OWNER
+    if login.strip().lower() == repo_owner.strip().lower():
+        return AUTHOR_OWNER
+    return AUTHOR_NON_OWNER
+
+
+def filter_owner_issues(raw_issues, repo_owner, platform=PLATFORM_GITHUB):
+    """Split raw issues into (owner_issues, rejected_pairs[(number, reason)])."""
+    kept = []
+    rejected = []
+    for item in raw_issues or []:
+        cls = classify_issue_author(item, repo_owner, platform)
+        if cls == AUTHOR_OWNER:
+            kept.append(item)
+        else:
+            num = item.get("number") if isinstance(item, dict) else None
+            rejected.append((num, cls))
+    return kept, rejected
+
+
+def build_repo_owner_cmd(platform, repo=None):
+    """Build argv to fetch authoritative repository owner login (GitHub only)."""
+    if platform != PLATFORM_GITHUB:
+        return None
+    cmd = ["gh", "repo", "view"]
+    if repo:
+        cmd.append(repo)
+    cmd += ["--json", "owner", "-q", ".owner.login"]
+    return cmd
+
+
+def fetch_repo_owner(platform, repo=None):
+    """Fetch authoritative repo owner login, returning (owner, error_msg)."""
+    cmd = build_repo_owner_cmd(platform, repo)
+    if cmd is None:
+        return None, f"owner verification is not supported on {platform} (failing closed)"
+    result = _run(cmd)
+    if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip() or "unknown error"
+        return None, f"failed to fetch repository owner: {detail}"
+    owner = result.stdout.strip()
+    if not owner:
+        return None, "repository owner lookup returned empty login"
+    return owner, None
+
+
 def normalize_issue(raw, platform, with_comments=False, include_body=True):
     """Normalize one raw gh/glab issue object into the helper's own schema.
 
@@ -139,7 +210,9 @@ def normalize_issue(raw, platform, with_comments=False, include_body=True):
     `include_body=False` drops the body entirely (not truncates) so a caller
     that only needs the timestamp cannot accidentally read a partial one.
     """
+    raw_author = raw.get("author")
     if platform == PLATFORM_GITLAB:
+        author = raw_author.get("username", "") if isinstance(raw_author, dict) else ""
         out = {
             "number": raw.get("iid"),
             "title": raw.get("title", ""),
@@ -147,9 +220,11 @@ def normalize_issue(raw, platform, with_comments=False, include_body=True):
             "url": raw.get("web_url", ""),
             "labels": list(raw.get("labels", []) or []),
             "updatedAt": raw.get("updated_at"),
+            "author": author or "",
         }
     else:
         labels = raw.get("labels", []) or []
+        author = raw_author.get("login", "") if isinstance(raw_author, dict) else ""
         out = {
             "number": raw.get("number"),
             "title": raw.get("title", ""),
@@ -157,6 +232,7 @@ def normalize_issue(raw, platform, with_comments=False, include_body=True):
             "url": raw.get("url", ""),
             "labels": [lbl["name"] if isinstance(lbl, dict) else lbl for lbl in labels],
             "updatedAt": raw.get("updatedAt"),
+            "author": author or "",
         }
     # 状态两端归一成 open / closed 两个值。消费方（`/start` 的开轮远端对齐）问的只有
     # 「这条还该不该做」，不该知道答话的是哪一端。
@@ -531,7 +607,7 @@ def cmd_issue_label_remove(args):
     return _cmd_issue_label(args, remove=True)
 
 
-def build_issue_view_cmd(platform, number, with_comments=False):
+def build_issue_view_cmd(platform, number, with_comments=False, repo=None):
     """Build the gh/glab issue-view argv (pure, no execution).
 
     `with_comments` only widens GitHub's --json field list; the base field set
@@ -543,11 +619,15 @@ def build_issue_view_cmd(platform, number, with_comments=False):
         # state / stateReason 是 `/start` 开轮远端对齐要的「这条还该不该做」——
         # 它比 `git log --grep "Closes #N"` 更权威：后者依赖提交信息写了关闭关键字，
         # 而 /start 是全局 skill，别的项目未必有这个约定。
-        fields = "number,title,body,url,labels,updatedAt,state,stateReason"
+        fields = "number,title,body,url,labels,updatedAt,state,stateReason,author"
         if with_comments:
             fields += ",comments"
-        return ["gh", "issue", "view", str(number), "--json", fields]
-    return ["glab", "issue", "view", str(number), "-F", "json"]
+        cmd = ["gh", "issue", "view", str(number), "--json", fields]
+    else:
+        cmd = ["glab", "issue", "view", str(number), "-F", "json"]
+    if repo:
+        cmd += ["--repo", repo]
+    return cmd
 
 
 def cmd_issue_view(args):
@@ -557,12 +637,20 @@ def cmd_issue_view(args):
         return EXIT_PLATFORM_UNKNOWN
     n = args.number
     with_comments = getattr(args, "with_comments", False)
+    require_owner = getattr(args, "require_owner", False)
+    repo = getattr(args, "repo", None)
+    repo_owner = None
+    if require_owner:
+        repo_owner, err = fetch_repo_owner(plat, repo)
+        if err:
+            sys.stderr.write(f"error: {err}\n")
+            return EXIT_ERROR
     if with_comments and plat == PLATFORM_GITLAB:
         sys.stderr.write(
             "note: --with-comments is not supported on gitlab; "
             "comments will be empty (glab notes capability unverified)\n"
         )
-    result = _run(build_issue_view_cmd(plat, n, with_comments))
+    result = _run(build_issue_view_cmd(plat, n, with_comments, repo))
     if result.returncode != 0:
         sys.stderr.write(result.stderr or result.stdout)
         return EXIT_ERROR
@@ -571,6 +659,13 @@ def cmd_issue_view(args):
     except json.JSONDecodeError as e:
         sys.stderr.write(f"error: cannot parse {plat} issue view output: {e}\n")
         return EXIT_ERROR
+    if require_owner:
+        cls = classify_issue_author(raw, repo_owner, plat)
+        if cls != AUTHOR_OWNER:
+            sys.stderr.write(
+                f"error: issue #{n} rejected by --require-owner (author classification: {cls})\n"
+            )
+            return EXIT_ERROR
     print(
         json.dumps(
             normalize_issue(raw, plat, with_comments), ensure_ascii=False, indent=2
@@ -579,7 +674,7 @@ def cmd_issue_view(args):
     return EXIT_OK
 
 
-def build_issue_list_cmd(platform, limit, repo, no_body=False):
+def build_issue_list_cmd(platform, limit, repo, no_body=False, author=None):
     """Build the gh/glab issue-list argv (pure, no execution).
 
     Emits the same field set as issue-view so both subcommands normalize into
@@ -594,9 +689,9 @@ def build_issue_list_cmd(platform, limit, repo, no_body=False):
     argv is unchanged and the body is dropped when normalizing instead.
     """
     if platform == PLATFORM_GITHUB:
-        fields = "number,title,url,labels,updatedAt,state"
+        fields = "number,title,url,labels,updatedAt,state,author"
         if not no_body:
-            fields = "number,title,body,url,labels,updatedAt,state"
+            fields = "number,title,body,url,labels,updatedAt,state,author"
         cmd = [
             "gh",
             "issue",
@@ -608,6 +703,8 @@ def build_issue_list_cmd(platform, limit, repo, no_body=False):
             "--json",
             fields,
         ]
+        if author:
+            cmd += ["--author", author]
     else:
         cmd = ["glab", "issue", "list", "--output", "json", "--per-page", str(limit)]
     if repo:
@@ -621,7 +718,18 @@ def cmd_issue_list(args):
         sys.stderr.write("error: cannot detect platform from git remote origin\n")
         return EXIT_PLATFORM_UNKNOWN
     no_body = getattr(args, "no_body", False)
-    result = _run(build_issue_list_cmd(plat, args.limit, args.repo, no_body))
+    owner_only = getattr(args, "owner_only", False)
+    repo_owner = None
+    if owner_only:
+        repo_owner, err = fetch_repo_owner(plat, args.repo)
+        if err:
+            sys.stderr.write(f"error: {err}\n")
+            return EXIT_ERROR
+    result = _run(
+        build_issue_list_cmd(
+            plat, args.limit, args.repo, no_body, author=repo_owner if owner_only else None
+        )
+    )
     if result.returncode != 0:
         sys.stderr.write(result.stderr or result.stdout)
         return EXIT_ERROR
@@ -633,6 +741,14 @@ def cmd_issue_list(args):
     if not isinstance(raw, list):
         sys.stderr.write(f"error: expected a json array from {plat} issue list\n")
         return EXIT_ERROR
+    if owner_only:
+        raw, rejected = filter_owner_issues(raw, repo_owner, plat)
+        if rejected:
+            summary = ", ".join(
+                f"#{num} ({reason})" if num is not None else f"<unknown> ({reason})"
+                for num, reason in rejected
+            )
+            sys.stderr.write(f"note: --owner-only excluded: {summary}\n")
     print(
         json.dumps(
             [normalize_issue(r, plat, include_body=not no_body) for r in raw],
@@ -1049,6 +1165,7 @@ def cmd_self_test():
         "url": "https://gl.com/x/y/-/issues/7",
         "labels": ["a", "b"],
         "updatedAt": None,
+        "author": "",
         "state": "open",
         "stateReason": "",
     }:
@@ -1071,6 +1188,7 @@ def cmd_self_test():
         "url": "https://gh.com/x/y/issues/7",
         "labels": ["a", "b"],
         "updatedAt": None,
+        "author": "",
         "state": "open",
         "stateReason": "",
     }:
@@ -1365,7 +1483,7 @@ def cmd_self_test():
                 "--limit",
                 "100",
                 "--json",
-                "number,title,body,url,labels,updatedAt,state",
+                "number,title,body,url,labels,updatedAt,state,author",
             ],
         ),
         (
@@ -1379,7 +1497,7 @@ def cmd_self_test():
                 "--limit",
                 "30",
                 "--json",
-                "number,title,body,url,labels,updatedAt,state",
+                "number,title,body,url,labels,updatedAt,state,author",
                 "--repo",
                 "o/x",
             ],
@@ -1396,7 +1514,7 @@ def cmd_self_test():
                 "--limit",
                 "100",
                 "--json",
-                "number,title,url,labels,updatedAt,state",
+                "number,title,url,labels,updatedAt,state,author",
             ],
         ),
         (
@@ -1450,6 +1568,7 @@ def cmd_self_test():
             "url": "https://gl/x/-/issues/3",
             "labels": ["priority:P0"],
             "updatedAt": None,
+            "author": "",
             "state": "open",
             "stateReason": "",
         }
@@ -1520,7 +1639,7 @@ def cmd_self_test():
                 "view",
                 "7",
                 "--json",
-                "number,title,body,url,labels,updatedAt,state,stateReason",
+                "number,title,body,url,labels,updatedAt,state,stateReason,author",
             ],
         ),
         (
@@ -1531,7 +1650,7 @@ def cmd_self_test():
                 "view",
                 "7",
                 "--json",
-                "number,title,body,url,labels,updatedAt,state,stateReason,comments",
+                "number,title,body,url,labels,updatedAt,state,stateReason,author,comments",
             ],
         ),
         ((PLATFORM_GITLAB, 7, False), ["glab", "issue", "view", "7", "-F", "json"]),
@@ -1705,6 +1824,16 @@ def build_parser():
         action="store_true",
         help="additionally emit `comments` and `ownerHint` (newest OWNER comment)",
     )
+    p_view.add_argument(
+        "--require-owner",
+        action="store_true",
+        help="Fail closed unless the issue was created by the authoritative repository owner (GitHub only)",
+    )
+    p_view.add_argument(
+        "--repo",
+        default=None,
+        help="Target repo slug (owner/name) to view an issue in a repo other than cwd's origin",
+    )
 
     p_list = sub.add_parser("issue-list")
     p_list.add_argument(
@@ -1724,6 +1853,11 @@ def build_parser():
         action="store_true",
         help="Omit issue bodies (GitHub drops them server-side). For cheap "
         "timestamp-only re-reads, e.g. /routine-dev's mid-run edit check",
+    )
+    p_list.add_argument(
+        "--owner-only",
+        action="store_true",
+        help="Keep only issues created by the authoritative repository owner; fail closed on missing/unreliable metadata or GitLab",
     )
 
     p_comment = sub.add_parser("issue-comment")
