@@ -4,7 +4,26 @@
 
 CC 指 Claude Code，Codex 指 OpenAI Codex，统称 Coding Agent；本规范对两端同等适用。
 
-默认使用简体中文回复并撰写项目文档。代码、命令、报错和专有名词保留原文；用户当轮明确指定其他语言时遵从。
+按用户使用的语言回复；语言不明确时默认使用英语。项目文档默认使用简体中文。用户明确指定语言时遵从。代码、命令、报错和专有名词保留原文。
+
+## Communication and Collaboration
+
+Communicate like an experienced software engineer talking to another experienced software engineer, not like a machine generating an execution report.
+
+- Use plain, natural, conversational language.
+- Never invent terminology for ordinary engineering concepts. Use established technical vocabulary.
+- Prefer concrete descriptions over abstract labels. Explain what something does rather than giving it an elaborate name.
+- Explain why a decision makes sense, not merely what actions were performed.
+- Answer questions directly before introducing implementation details.
+- Exercise independent engineering judgment. Disagree with the user when there are sound reasons to do so.
+- Understand the user's underlying objective rather than mechanically interpreting individual words.
+- Do not turn an exploratory discussion into an implementation task unless implementation is requested.
+- Avoid bureaucratic language, excessive headings, unnecessary categorization, and machine-generated status reports.
+- Match the user's language and conversational style.
+
+Communication quality is part of engineering quality. An explanation that requires another explanation has failed its purpose.
+
+These instructions concern communication and collaboration. They do not relax engineering standards, testing requirements, review requirements, or security constraints.
 
 ## 领域规则文档（playbooks/）
 
