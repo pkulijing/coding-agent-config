@@ -117,6 +117,7 @@ These instructions concern communication and collaboration. They do not relax en
   | CC | `Co-authored-by: Claude <noreply@anthropic.com>` |
   | Codex | `Co-authored-by: OpenAI Codex <noreply@openai.com>` |
   | DSH | `Co-authored-by: DeepSeek Harness <noreply@localhost>` |
+  | Antigravity | `Co-authored-by: Google Antigravity <noreply@google.com>` |
 
 - 保全已有、未提交及归属不明的工作；历史改写、合入和清理遵循相应技能的授权与备份条件，不强行覆盖或删除。
 

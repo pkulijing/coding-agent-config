@@ -552,6 +552,24 @@ deploy_dsh() {
     [ "$agents_home" = "$HOME/.agents" ] || deploy_skills "$agents_home/skills"
 }
 
+# Google Antigravity 全局配置根为 ~/.gemini/config/（不扫描 ~/.agents/skills/）：
+#   - 全局规则：~/.gemini/config/AGENTS.md（独立文件，无需 frontmatter，常驻加载）
+#   - 全局技能：~/.gemini/config/skills/<skill-name>（逐技能软链到 ~/.coding-agent/skills/）
+#   - 项目规则：Antigravity 原生读取仓库 AGENTS.md，不需要兼容包装文件。
+# 只在检测到 Antigravity（App/IDE、CLI 或全局配置根）时部署，避免污染未安装机器。
+deploy_antigravity() {
+    local config_home="${ANTIGRAVITY_CONFIG_HOME:-$HOME/.gemini/config}"
+    local ag_home="${ANTIGRAVITY_HOME:-$HOME/.gemini/antigravity}"
+    if [ ! -d "$config_home" ] &&
+       [ ! -d "$ag_home" ] &&
+       [ ! -d "$HOME/.gemini/antigravity-cli" ]; then
+        return 0
+    fi
+    mkdir -p "$config_home"
+    link_item "$REPO_DIR/GLOBAL_AGENTS.md" "$config_home/AGENTS.md"
+    deploy_skills "$config_home/skills"
+}
+
 # 判断目录是否位于 git linked worktree 内（主 checkout、非 git 目录都返回非 0）。
 # 比较 git-dir 与 git-common-dir 的物理路径：二者在 rev-parse 输出里可能是相对路径，
 # 故各自 cd 进去取 pwd -P，不依赖较新 git 才有的 --path-format。
@@ -600,6 +618,7 @@ deploy_shared
 deploy_codex
 deploy_claude_compat
 deploy_dsh
+deploy_antigravity
 ccg_repair_legacy_resources "${CODEX_HOME:-$HOME/.codex}"
 [ "${CODEX_HOME:-$HOME/.codex}" = "$HOME/.codex" ] || ccg_repair_legacy_resources "$HOME/.codex"
 [ ! -d "$HOME/.claude" ] || ccg_repair_legacy_resources "$HOME/.claude"

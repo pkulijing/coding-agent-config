@@ -39,5 +39,6 @@ description: 按照 git 规则自动分析变更并提交代码
    - CC（Claude Code）执行 → `Co-authored-by: Claude <noreply@anthropic.com>`
    - Codex（OpenAI Codex）执行 → `Co-authored-by: OpenAI Codex <noreply@openai.com>`
    - DSH（DeepSeek Harness）执行 → `Co-authored-by: DeepSeek Harness <noreply@localhost>`
+   - Antigravity（Google Antigravity）执行 → `Co-authored-by: Google Antigravity <noreply@google.com>`
    - **判据**：你知道自己是哪个 Agent，据此选身份；**不写其他 Agent 的身份**。
 10. 运行 `git status` 确认提交成功

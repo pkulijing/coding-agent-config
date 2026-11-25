@@ -1,0 +1,18 @@
+# 由 review-loop 读取并传入 Antigravity 的 define_subagent / invoke_subagent 工具；
+# 不是 Antigravity 原生 agent 注册配置。
+# 平台能力约束：
+#   - invoke_subagent 仅支持 Model 档位（inherit / flash_lite / flash / pro），无独立 reasoning_effort 参数。
+#   - orchestrator 与普通 reviewer 跟随主会话模型（inherit），重档深审（角度 ⑤）固定 pro。
+#   - define_subagent 将 EnableWriteTools 设为 false（结构性只读且无 shell，由主会话预采集
+#     git status/diff 及重档 git log 快照供子 agent 用绝对路径核对）；orchestrator 设
+#     EnableSubagentTools = true，reviewer 设 EnableSubagentTools = false（结构性禁止再扇出）。
+# 改本文件即改审查强度，按 /review-loop 的规则审查。
+
+[orchestrator]
+model = "inherit"
+
+[reviewer]
+model = "inherit"
+
+[deep_reviewer]
+model = "pro"

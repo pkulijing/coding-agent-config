@@ -15,6 +15,7 @@
 | Codex 指令与配置 | `${CODEX_HOME:-~/.codex}/AGENTS.md`、`config.toml` |
 | 共享技能根 | `~/.agents/skills/`，逐技能链接；Codex 与 DeepSeek Harness 共用（DSH 覆盖 `DSH_AGENTS_HOME` 时同步部署到该根的 `skills/`） |
 | DSH 全局指令 | `${DSH_AGENTS_HOME:-~/.agents}/AGENTS.md`，仅在 `${DSH_HOME:-~/.dsh}` 存在时部署 |
+| Antigravity 入口 | `${ANTIGRAVITY_CONFIG_HOME:-~/.gemini/config}/{AGENTS.md,skills/}`，仅在检测到 Antigravity 时部署 |
 | 用户真实配置 | `~/.coding-agent/config.env`，示例见 [user.config.example.env](user.config.example.env) |
 | 自动同步日志 | `~/.coding-agent/logs/auto-update.log` |
 
@@ -44,7 +45,7 @@ Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`
 | [paper-read](skills/paper-read/SKILL.md) | 论文阅读笔记 |
 | [routine-dev](skills/routine-dev/SKILL.md)、[routine-slim](skills/routine-slim/SKILL.md) | 自动开发明确需求、定期清理指令 |
 
-review 规格以技能、[Codex 角色配置](agents/codex-review.toml)与 [DSH 角色配置](agents/dsh-review.toml) 为准；CC 定义在 [agents](agents/)。三个平台均使用独立 context，能力不足时按既定链降级并报告。DSH 的委托深度上限为 1，编队由主会话直启 reviewer，角度不变；reviewer 路由跟随主会话。它不能证明模型质量不会下降，也不能消除同模型盲区。
+review 规格以技能、[Codex 角色配置](agents/codex-review.toml)、[DSH 角色配置](agents/dsh-review.toml)与 [Antigravity 角色配置](agents/antigravity-review.toml) 为准；CC 定义在 [agents](agents/)。四个平台均使用独立 context，能力不足时按既定链降级并报告。DSH 的委托深度上限为 1，编队由主会话直启 reviewer，角度不变；reviewer 路由跟随主会话。Antigravity 通过 `define_subagent` 提供结构性只读，但无独立思考档参数。它不能证明模型质量不会下降，也不能消除同模型盲区。
 
 ## 规则的放置与维护
 
