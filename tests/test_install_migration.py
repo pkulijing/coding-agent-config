@@ -22,7 +22,7 @@ class InstallMigrationTest(unittest.TestCase):
         self.repo.mkdir()
         for name in ('install.sh', 'GLOBAL_AGENTS.md', 'codex.config.base.toml',
                      'settings.base.json', 'user.config.example.env', 'uv.config.base.toml',
-                     'scripts', 'skills', 'hooks', 'templates', 'playbooks', 'agents'):
+                     'scripts', 'skills', 'templates', 'playbooks', 'agents'):
             src = REPO / name
             if src.is_dir():
                 shutil.copytree(src, self.repo / name)
@@ -39,15 +39,16 @@ class InstallMigrationTest(unittest.TestCase):
     def test_fresh_codex_without_claude(self):
         self.install()
         self.assertFalse((self.home / '.claude').exists())
-        for name in ('scripts', 'templates', 'skills', 'playbooks', 'hooks', 'agents', 'global-repo'):
+        for name in ('scripts', 'templates', 'skills', 'playbooks', 'agents', 'global-repo'):
             self.assertTrue((self.home / '.coding-agent' / name).is_symlink(), name)
+        self.assertFalse(os.path.lexists(self.home / '.coding-agent/hooks'))
         self.assertTrue((self.home / '.agents/skills/start').is_symlink())
+        self.assertFalse(os.path.lexists(self.home / '.agents/skills/devtree'))
+        self.assertTrue((self.repo / 'skills/devtree/SKILL.md').is_file())
         self.assertTrue((self.home / '.codex/AGENTS.md').is_symlink())
         config = tomllib.loads((self.home / '.codex/config.toml').read_text())
-        handler = config['hooks']['PostToolUse'][0]['hooks'][0]
-        self.assertEqual(handler['type'], 'command')
-        self.assertIn('.coding-agent/hooks/', handler['command'])
-        self.assertIn('# @coding-agent-config:fix-after-edit', handler['command'])
+        self.assertNotIn('hooks', config)
+        self.assertEqual(config['project_doc_max_bytes'], 65536)
 
     def test_remove_legacy_json_hooks_preserve_custom_handlers(self):
         for marker in ('claude-code-global', 'coding-agent-config'):
@@ -88,9 +89,8 @@ class InstallMigrationTest(unittest.TestCase):
         self.assertEqual(parsed['model'], 'user-model')
         self.assertEqual(parsed['desktop']['followUpQueueMode'], 'steer')
         groups = parsed['hooks']['PostToolUse']
-        self.assertEqual(len(groups), 2)
+        self.assertEqual(len(groups), 1)
         self.assertEqual(groups[0]['hooks'][0]['command'], 'echo custom')
-        self.assertEqual(groups[1]['matcher'], '^apply_patch$')
         before = dst.read_bytes()
         self.install()
         self.assertEqual(before, dst.read_bytes())
@@ -121,7 +121,7 @@ class InstallMigrationTest(unittest.TestCase):
         self.assertEqual(json.loads(dst.read_text()), custom)
         groups = tomllib.loads((agent / 'config.toml').read_text())['hooks']['PostToolUse']
         self.assertEqual(groups[0]['timeout'], 60)
-        self.assertEqual(len(groups), 2)
+        self.assertEqual(len(groups), 1)
 
     def test_malformed_legacy_json_aborts_without_overwriting(self):
         dst = self.home / '.codex/hooks.json'
@@ -142,7 +142,13 @@ class InstallMigrationTest(unittest.TestCase):
         self.install()
         parsed = tomllib.loads(dst.read_text())
         self.assertEqual(parsed['desktop']['followUpQueueMode'], 'steer')
-        self.assertEqual(len(parsed['hooks']['PostToolUse']), 1)
+        self.assertNotIn('hooks', parsed)
+        backups = list((self.home / '.codex').glob('config.toml.bak.*'))
+        self.assertTrue(backups)
+        before = dst.read_text()
+        self.install()
+        self.assertEqual(before, dst.read_text())
+        self.assertEqual(backups, list((self.home / '.codex').glob('config.toml.bak.*')))
 
     def test_legacy_flat_group_with_custom_child_table_is_preserved(self):
         dst = self.home / '.codex/config.toml'
@@ -154,8 +160,7 @@ class InstallMigrationTest(unittest.TestCase):
         dst.write_text(original)
         self.install()
         groups = tomllib.loads(dst.read_text())['hooks']['PostToolUse']
-        self.assertEqual(groups[0], expected)
-        self.assertEqual(len(groups), 2)
+        self.assertEqual(groups, [expected])
 
     def test_custom_codex_home_and_third_party_skill(self):
         self.env['CODEX_HOME'] = str(self.home / 'custom-codex')
@@ -252,21 +257,131 @@ class InstallMigrationTest(unittest.TestCase):
         self.install()
         self.assertEqual(tomllib.loads(dst.read_text())['project_doc_max_bytes'], 12345)
 
-    def test_replace_old_managed_hooks_preserve_user_config(self):
-        dst = self.home / '.codex/config.toml'
-        dst.parent.mkdir()
-        dst.write_text('model = "user-model"\n# >>> claude-code-global managed >>>\n'
-                       '[[hooks.PostToolUse]]\nmatcher="Wrong"\ncommand="old"\n'
-                       '# <<< claude-code-global managed <<<\n')
+    def test_remove_old_managed_hooks_block_preserve_user_config(self):
+        for marker in ('claude-code-global', 'coding-agent-config'):
+            with self.subTest(marker=marker):
+                agent = self.home / f'codex-{marker}'
+                agent.mkdir(exist_ok=True)
+                self.env['CODEX_HOME'] = str(agent)
+                dst = agent / 'config.toml'
+                dst.write_text(
+                    'model = "user-model"\n'
+                    '[[hooks.PostToolUse]]\nmatcher = "Bash"\n'
+                    '[[hooks.PostToolUse.hooks]]\ntype = "command"\ncommand = "echo custom"\n'
+                    f'# >>> {marker} managed >>>\n'
+                    '[[hooks.PostToolUse]]\nmatcher = "^apply_patch$"\n'
+                    '[[hooks.PostToolUse.hooks]]\ntype = "command"\n'
+                    f'command = \'bash "$HOME/.coding-agent/hooks/fix-after-edit.sh" # @{marker}:fix-after-edit\'\n'
+                    'timeout = 30\n'
+                    f'# <<< {marker} managed <<<\n'
+                )
+                self.install()
+                parsed = tomllib.loads(dst.read_text())
+                self.assertEqual(parsed['model'], 'user-model')
+                self.assertEqual(parsed['project_doc_max_bytes'], 65536)
+                self.assertEqual(len(parsed['hooks']['PostToolUse']), 1)
+                self.assertEqual(parsed['hooks']['PostToolUse'][0]['hooks'][0]['command'], 'echo custom')
+                backups = list(agent.glob('config.toml.bak.*'))
+                self.assertTrue(backups)
+                before = dst.read_text()
+                self.install()
+                self.assertEqual(before, dst.read_text())
+                self.assertEqual(backups, list(agent.glob('config.toml.bak.*')))
+
+    def test_claude_fresh_and_upgrade_retires_managed_hook_preserves_custom(self):
+        claude = self.home / '.claude'
+        claude.mkdir()
         self.install()
-        parsed = tomllib.loads(dst.read_text())
-        self.assertEqual(parsed['model'], 'user-model')
-        self.assertEqual(parsed['project_doc_max_bytes'], 65536)
-        self.assertEqual(len(parsed['hooks']['PostToolUse']), 1)
-        self.assertIn('hooks', parsed['hooks']['PostToolUse'][0])
-        before = dst.read_text()
+        settings = json.loads((claude / 'settings.json').read_text())
+        self.assertNotIn('hooks', settings)
+        self.assertTrue((claude / 'skills/start').is_symlink())
+        self.assertFalse(os.path.lexists(claude / 'skills/devtree'))
+
+        # Upgrade with managed hook only -> hooks key removed cleanly and idempotently
+        for marker in ('claude-code-global', 'coding-agent-config'):
+            with self.subTest(case='managed-only', marker=marker):
+                dst = claude / 'settings.json'
+                dst.write_text(json.dumps({
+                    'hooks': {'PostToolUse': [{'matcher': 'Edit|MultiEdit|Write', 'hooks': [{
+                        'type': 'command',
+                        'command': f'bash $HOME/.coding-agent/hooks/fix-after-edit.sh # @{marker}:fix-after-edit',
+                        'timeout': 30,
+                    }]}]},
+                    'permissions': {'allow': ['Skill(*)'], 'deny': []},
+                }))
+                self.install()
+                upgraded = json.loads(dst.read_text())
+                self.assertNotIn('hooks', upgraded)
+                backups = list(claude.glob('settings.json.bak.*'))
+                self.assertTrue(backups)
+                before = dst.read_bytes()
+                self.install()
+                self.assertEqual(before, dst.read_bytes())
+                self.assertEqual(backups, list(claude.glob('settings.json.bak.*')))
+
+        # Upgrade with managed hook + custom hook -> only custom hook survives
+        dst = claude / 'settings.json'
+        custom_hook = {'type': 'command', 'command': 'echo user-hook'}
+        dst.write_text(json.dumps({
+            'hooks': {'PostToolUse': [{'matcher': 'Edit|MultiEdit|Write', 'hooks': [
+                {'type': 'command', 'command': 'bash $HOME/.coding-agent/hooks/fix-after-edit.sh # @coding-agent-config:fix-after-edit'},
+                custom_hook,
+            ]}]},
+            'permissions': {'allow': ['Skill(*)'], 'deny': []},
+        }))
         self.install()
-        self.assertEqual(before, dst.read_text())
+        upgraded = json.loads(dst.read_text())
+        self.assertEqual(upgraded['hooks'], {'PostToolUse': [{'matcher': 'Edit|MultiEdit|Write', 'hooks': [custom_hook]}]})
+        before = dst.read_bytes()
+        self.install()
+        self.assertEqual(before, dst.read_bytes())
+
+    def test_upgrade_cleans_legacy_hooks_symlinks_and_preserves_user_hooks(self):
+        shared = self.home / '.coding-agent'
+        shared.mkdir()
+        (shared / 'hooks').symlink_to(self.repo / 'hooks')
+        codex = self.home / '.codex'
+        codex.mkdir()
+        (codex / 'hooks').symlink_to(self.repo / 'hooks')
+        claude_hooks = self.home / '.claude/hooks'
+        claude_hooks.mkdir(parents=True)
+        (claude_hooks / 'fix-after-edit.sh').symlink_to(shared / 'hooks/fix-after-edit.sh')
+        custom_script = claude_hooks / 'custom.sh'
+        custom_script.write_text('#!/bin/bash\necho keep\n')
+
+        self.install()
+
+        self.assertFalse(os.path.lexists(shared / 'hooks'))
+        self.assertFalse(os.path.lexists(codex / 'hooks'))
+        self.assertFalse(os.path.lexists(claude_hooks / 'fix-after-edit.sh'))
+        self.assertTrue(custom_script.is_file())
+        self.assertEqual(custom_script.read_text(), '#!/bin/bash\necho keep\n')
+
+        # User-created real directory at ~/.coding-agent/hooks is never removed
+        (shared / 'hooks').mkdir()
+        (shared / 'hooks/mine.sh').write_text('keep')
+        self.install()
+        self.assertTrue((shared / 'hooks/mine.sh').is_file())
+
+    def test_relative_hooks_symlinks_are_preserved_regardless_of_cwd(self):
+        codex = self.home / '.codex'
+        codex.mkdir()
+        (self.home / 'hooks').mkdir()
+        (codex / 'hooks').symlink_to('../hooks')
+        claude_hooks = self.home / '.claude/hooks'
+        claude_hooks.mkdir(parents=True)
+        (claude_hooks / 'fix-after-edit.sh').symlink_to('./hooks/fix-after-edit.sh')
+
+        subdir = self.repo / 'scripts'
+        subprocess.run(['bash', '../install.sh'], cwd=subdir, env=self.env,
+                       check=True, capture_output=True, text=True)
+        self.assertTrue((codex / 'hooks').is_symlink())
+        self.assertEqual(os.readlink(codex / 'hooks'), '../hooks')
+
+        subprocess.run(['bash', 'install.sh'], cwd=self.repo, env=self.env,
+                       check=True, capture_output=True, text=True)
+        self.assertTrue((claude_hooks / 'fix-after-edit.sh').is_symlink())
+        self.assertEqual(os.readlink(claude_hooks / 'fix-after-edit.sh'), './hooks/fix-after-edit.sh')
 
 
 if __name__ == '__main__':

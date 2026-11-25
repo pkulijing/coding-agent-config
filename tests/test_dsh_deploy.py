@@ -26,7 +26,7 @@ class DshDeployTest(unittest.TestCase):
         self.repo.mkdir()
         for name in ('install.sh', 'GLOBAL_AGENTS.md', 'codex.config.base.toml',
                      'settings.base.json', 'user.config.example.env', 'uv.config.base.toml',
-                     'scripts', 'skills', 'hooks', 'templates', 'playbooks', 'agents'):
+                     'scripts', 'skills', 'templates', 'playbooks', 'agents'):
             src = REPO / name
             if src.is_dir():
                 shutil.copytree(src, self.repo / name)
@@ -99,6 +99,7 @@ class DshDeployTest(unittest.TestCase):
         self.assertTrue((custom / 'skills' / 'commit').is_symlink())
         self.assertEqual(Path(os.readlink(custom / 'skills' / 'commit')),
                          self.home / '.coding-agent' / 'skills' / 'commit')
+        self.assertFalse(os.path.lexists(custom / 'skills' / 'devtree'))
         self.assertFalse(os.path.lexists(self.dsh_link()))
         self.assertFalse((self.home / '.agents' / 'skills').exists())
         self.assertIn('已跳过 AGENTS.md', first.stdout + out.stdout)

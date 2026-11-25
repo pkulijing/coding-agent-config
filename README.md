@@ -1,6 +1,6 @@
 # coding-agent-config
 
-个人 Coding Agent harness，集中维护开发规范、技能、独立 review、脚本、hooks 和跨项目模板。目标是让 Agent 自主完成工作，减少人工纠正与维护；Codex 主用，Claude Code 保留兼容入口，DeepSeek Harness 复用同一套共享资源。
+个人 Coding Agent harness，集中维护开发规范、技能、独立 review、脚本和跨项目模板。目标是让 Agent 自主完成工作，减少人工纠正与维护；Codex 主用，Claude Code 保留兼容入口，DeepSeek Harness 复用同一套共享资源。
 
 日常规则见 [GLOBAL_AGENTS.md](GLOBAL_AGENTS.md)，本仓开发约束见 [AGENTS.md](AGENTS.md)。需求以 issue 为真源：[未关闭项](https://github.com/pkulijing/coding-agent-config/issues?q=is%3Aissue+is%3Aopen+label%3Apriority%3AP0%2Cpriority%3AP1%2Cpriority%3AP2)，开发历史用 `git log` 与 issue 列表（[DEVTREE](docs/DEVTREE.md) 已冻结于第 69 轮）。
 
@@ -10,7 +10,7 @@
 
 | 内容 | 部署位置 |
 | --- | --- |
-| 共享资源目录 | `~/.coding-agent/{skills,scripts,templates,playbooks,hooks,agents}`，链接到本仓 |
+| 共享资源目录 | `~/.coding-agent/{skills,scripts,templates,playbooks,agents}`，链接到本仓 |
 | 稳定仓库入口 | `~/.coding-agent/global-repo` |
 | Codex 指令与配置 | `${CODEX_HOME:-~/.codex}/AGENTS.md`、`config.toml` |
 | 共享技能根 | `~/.agents/skills/`，逐技能链接；Codex 与 DeepSeek Harness 共用（DSH 覆盖 `DSH_AGENTS_HOME` 时同步部署到该根的 `skills/`） |
@@ -21,7 +21,7 @@
 
 目录软链内普通内容随主 checkout 更新生效。新增/删除技能或修改原生配置基线后重跑安装；旧配置迁移保留原件，已有用户值不覆盖。配置项及安装行为以 [install.sh](install.sh) 和示例文件为准。
 
-首次安装或更改 Codex hook 命令后，仍需在 `/hooks` 审阅信任并核对实际触发。格式化 hook 是尽力修复，提交前 lint 继续作为门禁。已打开的会话不保证加载新指令，合入后用新会话工作。
+提交前 lint 继续作为门禁。已打开的会话不保证加载新指令，合入后用新会话工作。
 
 自动同步由 [scheduler](scheduler/) 调用 [auto-update.sh](scripts/auto-update.sh)，使用 coding-agent-config 任务名。网络失败、工作区脏或无法快进时保留现场并写日志；安装中断的标记供下次补跑。停止自动同步可在主 checkout 运行 `bash scheduler/uninstall.sh`。首次安装、无调度器的环境仍需手动更新。
 
@@ -41,7 +41,7 @@ Codex 在 `/start` 开始实施时将当前会话命名为 `r<N>-<中文描述>`
 | [commit](skills/commit/SKILL.md)、[review-loop](skills/review-loop/SKILL.md) | 提交、独立审查与修复迭代 |
 | [rebase](skills/rebase/SKILL.md)、[pybump](skills/pybump/SKILL.md) | 直线历史整理、Python 版本发布准备 |
 | [bootstrap](skills/bootstrap/SKILL.md)、[sync-project-config](skills/sync-project-config/SKILL.md) | 新项目初始化、已有项目模板同步与接入 |
-| [devtree](skills/devtree/SKILL.md) | 已冻结：仅用于存量开发树修复 |
+| [devtree](skills/devtree/SKILL.md) | 已冻结、停止默认注册：源码保留在仓库，仅用于存量开发树修复 |
 | [paper-read](skills/paper-read/SKILL.md) | 论文阅读笔记 |
 | [routine-dev](skills/routine-dev/SKILL.md)、[routine-slim](skills/routine-slim/SKILL.md) | 自动开发明确需求、定期清理指令 |
 

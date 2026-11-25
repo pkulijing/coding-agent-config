@@ -16,7 +16,7 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $*"; }
 
 # 由本仓库管理的 hook 条目，command 末尾必须带这条 bash 注释作为身份标记。
 # 完整格式（严格匹配）：# @coding-agent-config:<hook-name>（兼容旧项目标记）
-# 例如：bash $HOME/.coding-agent/hooks/fix-after-edit.sh # @coding-agent-config:fix-after-edit
+# 例如历史条目：... # @coding-agent-config:fix-after-edit
 #
 # 模型：把 settings.json 里所有带此标记的 hook 条目看作"由本仓库管理的 hook 集合"，
 # 用 hook-name 唯一标识。每次 install 做集合差分：
@@ -70,8 +70,12 @@ merge_settings() {
     if [ ! -f "$dst" ]; then
         cp "$src" "$dst"
         success "已创建 ${name}（从 $(basename "$src") 初始化）"
-        info "  managed hooks 新增: $(list_managed_names "$src")"
-        return
+        local src_managed
+        src_managed="$(list_managed_names "$src")"
+        if [ -n "$src_managed" ]; then
+            info "  managed hooks 新增: $src_managed"
+        fi
+        return 0
     fi
 
     # Step 1: 计算 managed name 集合差分并打印
@@ -92,7 +96,8 @@ merge_settings() {
     # Step 2: 剔除 dst 中所有 managed 条目（command 匹配 MANAGED_MARKER_REGEX）
     local pruned
     pruned="$(jq --arg re "$MANAGED_MARKER_REGEX" '
-      if .hooks then
+      if (.hooks | type) == "object" then
+        (.hooks | length) as $before_len |
         .hooks |= (
           with_entries(
             .value |= (
@@ -101,7 +106,8 @@ merge_settings() {
             )
           )
           | with_entries(select(.value | length > 0))
-        )
+        ) |
+        if $before_len > 0 and (.hooks | length) == 0 then del(.hooks) else . end
       else . end
     ' "$dst")"
 
@@ -173,14 +179,28 @@ merge_toml() {
     fi
 
     # 提取基线的 marker 块
-    local block
+    local block ts
     block="$(extract_toml_block "$src")"
     if [ -z "$block" ]; then
-        warn "基线 $(basename "$src") 无 marker 块，跳过合并 ${name}"
+        if grep -qE "^# >>> (claude-code-global|coding-agent-config) managed >>>$" "$dst"; then
+            ts="$(date +%Y%m%d-%H%M%S)"
+            cp "$dst" "${dst}.bak.${ts}"
+            local merged_file
+            merged_file="$(mktemp)"
+            awk -v b="$TOML_MARKER_BEGIN" -v e="$TOML_MARKER_END" '
+                $0 == b || $0 == "# >>> claude-code-global managed >>>" { inblk = 1; next }
+                inblk && ($0 == e || $0 == "# <<< claude-code-global managed <<<") { inblk = 0; next }
+                inblk { next }
+                { print }
+            ' "$dst" > "$merged_file"
+            mv "$merged_file" "$dst"
+            success "已清理 ${name} 中的历史托管 marker 块（备份：${name}.bak.${ts}）"
+        else
+            info "已跳过 ${name}（基线无托管块）"
+        fi
         return
     fi
 
-    local ts
     if grep -qE "^# >>> (claude-code-global|coding-agent-config) managed >>>$" "$dst"; then
         # 已有 marker 块：比较是否需要更新
         local current_block
@@ -310,18 +330,33 @@ ccg_repair_legacy_resources() {
         link="$home/$rel"
         if [ -L "$link" ]; then
             target="$(readlink "$link")"
+            case "$target" in /*) ;; *) continue ;; esac
             if [ "$rel" = global-repo ]; then owner="$target"; else owner="${target%/"$rel"}"; fi
-            if ccg_is_managed_root "$owner"; then
+            if [ "$rel" = hooks ] && [ ! -d "$REPO_DIR/hooks" ]; then
+                if [ "$owner" != "$target" ] && { [ "$owner" = "$HOME/.coding-agent" ] || ccg_is_managed_root "$owner"; }; then
+                    rm -f "$link"
+                    info "已清理旧的 ${link}（hooks 已退役）"
+                fi
+            elif ccg_is_managed_root "$owner"; then
                 link_item "$HOME/.coding-agent/$rel" "$link"
             fi
         elif [ -d "$link" ] && { [ "$rel" = scripts ] || [ "$rel" = hooks ]; }; then
             for file in "$link"/*; do
                 [ -L "$file" ] || continue
                 target="$(readlink "$file")"
+                case "$target" in /*) ;; *) continue ;; esac
                 owner="${target%/"$rel"/"$(basename "$file")"}"
                 [ "$owner" != "$target" ] || continue
-                ccg_is_managed_root "$owner" || continue
-                link_item "$HOME/.coding-agent/$rel/$(basename "$file")" "$file"
+                if [ "$rel" = hooks ] && [ ! -d "$REPO_DIR/hooks" ]; then
+                    if [ "$(basename "$file")" = "fix-after-edit.sh" ] &&
+                       { [ "$owner" = "$HOME/.coding-agent" ] || ccg_is_managed_root "$owner"; }; then
+                        rm -f "$file"
+                        info "已清理旧的 ${file}（hooks 已退役）"
+                    fi
+                else
+                    ccg_is_managed_root "$owner" || continue
+                    link_item "$HOME/.coding-agent/$rel/$(basename "$file")" "$file"
+                fi
             done
         fi
     done
@@ -370,40 +405,61 @@ deploy_shared() {
     local shared="$HOME/.coding-agent" name
     mkdir -p "$shared"
     for name in scripts templates playbooks skills hooks agents; do
-        [ -d "$REPO_DIR/$name" ] || continue
-        link_item "$REPO_DIR/$name" "$shared/$name"
+        if [ -d "$REPO_DIR/$name" ]; then
+            link_item "$REPO_DIR/$name" "$shared/$name"
+        elif [ "$name" = hooks ]; then
+            unlink_legacy_dir "$shared/$name" "$name"
+        fi
     done
     link_item "$REPO_DIR" "$shared/global-repo"
 }
 
+# 退役或停止默认注册的技能：清理本仓软链且不再注册到各端发现入口。
+RETIRED_SKILLS=(design devtree)
+is_retired_skill() {
+    local candidate="$1" retired_name
+    for retired_name in "${RETIRED_SKILLS[@]}"; do
+        [ "$candidate" = "$retired_name" ] && return 0
+    done
+    return 1
+}
+
 # 只移除能认出属于本仓的旧技能软链，不触碰第三方技能或真实目录。
 deploy_skills() {
-    local dst="$1" legacy="${2:-}" skill_dir skill_name
+    local dst="$1" legacy="${2:-}" skill_dir skill_name retired_name
     mkdir -p "$dst"
     local retired target owner
-    for retired in "$dst/design" ${legacy:+"$legacy/design"}; do
-        [ -L "$retired" ] || continue
-        target="$(readlink "$retired")"
-        case "$target" in
-        /*/skills/design) owner="${target%/skills/design}" ;;
-        *) continue ;;
-        esac
-        if [ "$owner" = "$HOME/.coding-agent" ] || [ "$owner" = "$REPO_DIR" ] ||
-           printf '%s\n' "$CCG_MANAGED_ROOTS" | grep -Fxq -- "$owner"; then
-            rm -f "$retired"
-            info "已清理退役技能：$retired"
-        fi
+    for retired_name in "${RETIRED_SKILLS[@]}"; do
+        for retired in "$dst/$retired_name" ${legacy:+"$legacy/$retired_name"}; do
+            [ -L "$retired" ] || continue
+            target="$(readlink "$retired")"
+            case "$target" in
+            /*/skills/"$retired_name") owner="${target%/skills/"$retired_name"}" ;;
+            *) continue ;;
+            esac
+            if [ "$owner" = "$HOME/.coding-agent" ] || [ "$owner" = "$REPO_DIR" ] ||
+               printf '%s\n' "$CCG_MANAGED_ROOTS" | grep -Fxq -- "$owner"; then
+                rm -f "$retired"
+                info "已清理退役技能：$retired"
+            fi
+        done
     done
     if [ -n "$legacy" ]; then
         for skill_dir in "$legacy"/*; do
             [ -L "$skill_dir" ] || continue
-            [ "$skill_dir" != "$legacy/design" ] || continue
-            unlink_legacy_dir "$skill_dir" "skills/$(basename "$skill_dir")"
+            skill_name="$(basename "$skill_dir")"
+            if is_retired_skill "$skill_name"; then
+                continue
+            fi
+            unlink_legacy_dir "$skill_dir" "skills/$skill_name"
         done
     fi
     for skill_dir in "$REPO_DIR/skills"/*/; do
         [ -f "$skill_dir/SKILL.md" ] || continue
         skill_name="$(basename "$skill_dir")"
+        if is_retired_skill "$skill_name"; then
+            continue
+        fi
         local existing="$dst/$skill_name"
         if [ -e "$existing" ] || [ -L "$existing" ]; then
             target="$(readlink "$existing" 2>/dev/null || true)"
@@ -662,6 +718,3 @@ echo ""
 echo "=============================="
 echo " 安装完成"
 echo "=============================="
-
-echo ""
-warn "Codex hooks 需在 Codex 的 /hooks 中审阅并信任当前定义后才会生效。"

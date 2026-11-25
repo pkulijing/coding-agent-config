@@ -1,16 +1,4 @@
-# Codex 首次安装默认值；现有 config.toml 的托管块外内容始终保留。
-# hooks 原生格式：https://learn.chatgpt.com/docs/hooks
+# Codex 首次安装默认值；现有 config.toml 的用户配置始终保留。
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 project_doc_max_bytes = 65536
-
-# >>> coding-agent-config managed >>>
-# 本块由 install.sh 管理；运行前需在 /hooks 中审阅并信任。
-[[hooks.PostToolUse]]
-matcher = "^apply_patch$"
-
-[[hooks.PostToolUse.hooks]]
-type = "command"
-command = 'bash "$HOME/.coding-agent/hooks/fix-after-edit.sh" # @coding-agent-config:fix-after-edit'
-timeout = 30
-# <<< coding-agent-config managed <<<

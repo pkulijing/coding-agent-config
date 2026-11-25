@@ -10,15 +10,16 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 
 
+@pytest.mark.parametrize("skill", ["design", "devtree"])
 @pytest.mark.parametrize("owner", ["shared", "checkout", "foreign", "directory"])
-def test_retired_design(tmp_path, owner):
+def test_retired_skills(tmp_path, skill, owner):
     home = tmp_path / "home"
     root = home / ".agents/skills"
     legacy = home / ".codex/skills"
     targets = {
-        "shared": home / ".coding-agent/skills/design",
-        "checkout": REPO / "skills/design",
-        "foreign": tmp_path / "vendor/skills/design",
+        "shared": home / ".coding-agent/skills" / skill,
+        "checkout": REPO / "skills" / skill,
+        "foreign": tmp_path / "vendor/skills" / skill,
     }
     vendor = tmp_path / "vendor"
     vendor.mkdir()
@@ -26,7 +27,7 @@ def test_retired_design(tmp_path, owner):
     (vendor / "GLOBAL_AGENTS.md").touch()
     for parent in (root, legacy):
         parent.mkdir(parents=True)
-        link = parent / "design"
+        link = parent / skill
         if owner == "directory":
             link.mkdir()
         else:
@@ -38,7 +39,7 @@ def test_retired_design(tmp_path, owner):
             env={"HOME": str(home), "PATH": os.environ["PATH"], "CCG_INSTALL_LIB_ONLY": "1"},
             check=True, capture_output=True,
         )
-        for link in (root / "design", legacy / "design"):
+        for link in (root / skill, legacy / skill):
             if owner == "foreign":
                 assert link.readlink() == targets[owner]
             elif owner == "directory":
@@ -46,3 +47,8 @@ def test_retired_design(tmp_path, owner):
             else:
                 assert not os.path.lexists(link)
         assert (root / "quick").is_symlink()
+
+
+def test_devtree_source_and_frozen_doc_are_retained():
+    assert (REPO / "skills/devtree/SKILL.md").is_file()
+    assert (REPO / "docs/DEVTREE.md").is_file()

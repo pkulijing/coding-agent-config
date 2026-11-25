@@ -1,6 +1,6 @@
 # coding-agent-config
 
-个人 Coding Agent harness：规范、技能、review、hooks、脚本、模板与自动同步。Codex 主用，Claude Code 保留兼容入口；共享资源部署到 `~/.coding-agent/`。
+个人 Coding Agent harness：规范、技能、review、脚本、模板与自动同步。Codex 主用，Claude Code 保留兼容入口；共享资源部署到 `~/.coding-agent/`。
 
 ## 文件与部署
 
@@ -9,11 +9,11 @@
 | `GLOBAL_AGENTS.md` | 全局规则，链接到 Codex 的 AGENTS.md；已有 CC 安装可链接到 CLAUDE.md；DSH 安装后链接到共享 agents 根的 AGENTS.md；Antigravity 安装后链接到 `~/.gemini/config/AGENTS.md` |
 | `AGENTS.md` / `CLAUDE.md` | 本仓规则正文（Codex / DSH / Antigravity 原生读取） / 仅含 `@AGENTS.md` 的 CC 兼容入口 |
 | `skills/` | 共享技能；Codex 与 DSH 通过 `~/.agents/skills/` 发现（DSH 覆盖 `DSH_AGENTS_HOME` 时为该 agents 根的 `skills/`）；Antigravity 逐技能链接到 `~/.gemini/config/skills/` |
-| `scripts/`、`templates/`、`playbooks/`、`hooks/`、`agents/` | 整体软链到 `~/.coding-agent/`，内容修改随主 checkout 生效 |
+| `scripts/`、`templates/`、`playbooks/`、`agents/` | 整体软链到 `~/.coding-agent/`，内容修改随主 checkout 生效 |
 | `agents/codex-review.toml` | Codex review 的模型/思考档真源，供技能传参，不是原生注册配置 |
 | `agents/dsh-review.toml` | DSH review 的思考档真源与路由策略，同上 |
 | `agents/antigravity-review.toml` | Antigravity review 的模型档位真源，供 `define_subagent` / `invoke_subagent` 传参，无独立思考档参数 |
-| `codex.config.base.toml` | Codex 基线；合并托管 hooks，保留块外用户配置，规则长度上限仅补缺 |
+| `codex.config.base.toml` | Codex 基线；保留用户配置，升级时清理历史托管 hooks 块，规则长度上限仅补缺 |
 | `settings.base.json` | CC 兼容基线，仅已有 CC 安装时部署 |
 | `user.config.example.env` | 配置示例；真实值在仓库外 `~/.coding-agent/config.env`，迁移保留原件、用户值优先 |
 | `uv.config.base.toml` | 仅在用户 uv 配置缺失时初始化 |
@@ -26,7 +26,6 @@
 - 遵循全局开发流程。项目 `.worktrees/` 提供全部工作树入口；Codex 托管工作树在此建立软链接，保留真实路径与应用生命周期。每次操作显式指定工作目录。
 - 安装只在主 checkout 运行，linked worktree 必须拒绝。安装测试先用 `CCG_INSTALL_LIB_ONLY=1` 隔离入口，在临时 HOME 中验证；维护测试统一放在 `tests/`，运行 `bash scripts/check.sh`（或 `uv run --frozen pytest`）。
 - 新增/删除技能或修改原生配置基线后，从主 checkout 重跑安装；目录软链内普通内容修改不必重装。
-- hooks 的注册、用户信任、真实触发分别核验；配置变更后仍需 `/hooks` 审阅。hook 尽力修复不替代提交前 lint。
 - review 包含工作树全部改动与新文件。改审查规则时冻结起始版本及其依赖；不借本次修改降低检查标准。委派与降级按 `/review-loop`。
 - 共享资源引用 `~/.coding-agent/`，原生端目录仅用于平台注册。不能机械替换平台 CLI、事件、权限或模型参数。
 - issue/label 使用 `~/.coding-agent/scripts/platform_issue.py`；改 `.github/labels.yml` 后需同步到目标平台。
