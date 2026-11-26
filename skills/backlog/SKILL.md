@@ -59,12 +59,12 @@ issue 关闭仍由 `/finish` 完成（commit 写 `Closes #N`，语义同上）�
 
 ### Step 6：执行 —— 创建 issue
 
-把 Step 5 确认过的 body 内容写到临时文件 `/tmp/backlog-body.md`（用当前平台的文件写入工具），再调 helper：
+把 Step 5 确认过的 body 内容用当前平台的文件写入工具保存为临时文件：优先使用平台实际提供的当前会话 scratch / 临时目录（如 Antigravity 的会话 scratch）；无专用目录时使用系统临时目录（如 CC / Codex 的 `/tmp`）。以本次工具或环境提供的路径为准，不猜会话目录；文件名须避免覆盖其他任务的文件。下面的 `<临时文件路径>` 替换为实际保存的完整路径，再调 helper：
 
 ```bash
 python3 $HOME/.coding-agent/scripts/platform_issue.py issue-create \
   --title "<标题>" \
-  --body-file /tmp/backlog-body.md \
+  --body-file "<临时文件路径>" \
   --label "type:<X>" \
   --label "area:<Y>" \
   --label "priority:<Z>"

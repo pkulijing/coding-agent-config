@@ -71,9 +71,9 @@ description: 完成当前开发项：核对计划验收、关联 issue、提交�
 
    只从该列表挑，不在列表的不要硬塞（为什么必须校验、以及硬塞失败后的补救路径，见 `scripts/platform_issue.md`「三轴 label 硬约束」）。
 
-3. **写临时 body**（`/tmp/distill-<n>.md`）：来源项目与轮次、适用条件、现有能力的缺口、具体落点与不应扩大的范围；末尾标注「经用户确认的跨项目候选」。当前项目有 remote 就给回链 URL。不要复制事故全过程。
+3. **写临时 body**：优先使用平台实际提供的当前会话 scratch / 临时目录（如 Antigravity 的会话 scratch）；无专用目录时使用系统临时目录（如 CC / Codex 的 `/tmp`）。以本次工具或环境提供的路径为准，不猜会话目录；为每条候选使用不覆盖其他任务文件的文件名。内容包括：来源项目与轮次、适用条件、现有能力的缺口、具体落点与不应扩大的范围；末尾标注「经用户确认的跨项目候选」。当前项目有 remote 就给回链 URL。不要复制事故全过程。
 
-4. **调 helper 跨仓库提**（`--platform "$PLAT" issue-create --repo "$SLUG"` + 三轴 label + `--body-file`），成功则打印返回的 issue URL。
+4. **调 helper 跨仓库提**（`--platform "$PLAT" issue-create --repo "$SLUG"` + 三轴 label + `--body-file "<临时文件路径>"`，占位符替换为第 3 步实际保存的完整路径），成功则打印返回的 issue URL。
 
    helper 报错时不得去掉 `--label` 重试；重新核对目标仓库的三轴 label，仍失败则报告错误，保留候选于对话输出并继续 finish。
 
